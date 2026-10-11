@@ -75,13 +75,13 @@ systems:
   - {id: sys:reclamonline, name: Réclam'Online, aliases: [ReclamOnline, Reclam Online, portail Réclam'Online]}
 
 projects:
-  - {id: prj:sentinel, name: Projet Sentinel, aliases: [projet Sentinel], domain: dom:kyc}
-  - {id: prj:horizon-data, name: Programme Horizon Data, aliases: [programme Horizon Data, Horizon Data, programme Horizon], domain: dom:data}
-  - {id: prj:credifast, name: Projet CrediFast, aliases: [projet CrediFast, CrediFast], domain: dom:credit}
-  - {id: prj:vigilance, name: Projet Vigilance, aliases: [projet Vigilance], domain: dom:labft}
-  - {id: prj:habilitations360, name: Projet Habilitations 360, aliases: [projet Habilitations 360, Habilitations 360], domain: dom:secsi}
-  - {id: prj:resilience, name: Projet Résilience, aliases: [projet Résilience, projet Resilience], domain: dom:continuite}
-  - {id: prj:voix-du-client, name: Projet Voix du Client, aliases: [projet Voix du Client, Voix du Client], domain: dom:relationclient}
+  - {id: prj:sentinel, code: SENTINEL, name: Projet Sentinel, aliases: [projet Sentinel], domain: dom:kyc}
+  - {id: prj:horizon-data, code: HORIZON, name: Programme Horizon Data, aliases: [programme Horizon Data, Horizon Data, programme Horizon], domain: dom:data}
+  - {id: prj:credifast, code: CREDIFAST, name: Projet CrediFast, aliases: [projet CrediFast, CrediFast], domain: dom:credit}
+  - {id: prj:vigilance, code: VIGILANCE, name: Projet Vigilance, aliases: [projet Vigilance], domain: dom:labft}
+  - {id: prj:habilitations360, code: HAB360, name: Projet Habilitations 360, aliases: [projet Habilitations 360, Habilitations 360], domain: dom:secsi}
+  - {id: prj:resilience, code: RESILIENCE, name: Projet Résilience, aliases: [projet Résilience, projet Resilience], domain: dom:continuite}
+  - {id: prj:voix-du-client, code: VDC, name: Projet Voix du Client, aliases: [projet Voix du Client, Voix du Client], domain: dom:relationclient}
 
 procedures:
   - {id: prc:PRC-KYC-001, name: "Procédure d'entrée en relation et de connaissance client", aliases: [PRC-KYC-001, procédure KYC, procédure de connaissance client], domain: dom:kyc}

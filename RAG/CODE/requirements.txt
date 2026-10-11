@@ -1,0 +1,36 @@
+# Dépendances d'exécution (versions figées pour la reproductibilité).
+# Installation : pip install -r requirements.txt
+# Le modèle spaCy français est distribué sur PyPI par son éditeur (Explosion).
+
+# --- API ---
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+pyjwt==2.15.1
+pydantic==2.14.0
+pydantic-settings==2.15.0
+
+# --- Graphe et orchestration ---
+neo4j==6.4.0
+langgraph==1.2.14
+langchain-core==1.6.9
+
+# --- Extraction documentaire et OCR ---
+pymupdf==1.28.2
+python-docx==1.2.0
+pytesseract==0.3.13
+pillow==12.3.0
+
+# --- NLP, embeddings, résolution d'entités ---
+spacy==3.8.16
+fr-core-news-md==3.8.0
+wordllama==0.4.0.post1
+rapidfuzz==3.14.6
+numpy==2.5.4
+
+# --- LLM ---
+httpx==0.28.1
+anthropic==1.13.0
+
+# --- Divers ---
+pyyaml==6.0.3

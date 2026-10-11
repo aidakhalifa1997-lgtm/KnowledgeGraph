@@ -1,0 +1,30 @@
+[project]
+name = "orizia-knowledge-platform"
+version = "1.0.0"
+description = "Plateforme de gestion des connaissances fondée sur un Knowledge Graph (Neo4j) enrichi par un LLM — PFE Data Engineering"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: tests nécessitant une instance Neo4j (variable NEO4J_TEST_URI)",
+]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["frontend", "runtime"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = [
+    "S101",  # assert autorisé dans les tests
+    "S311",  # random non cryptographique accepté (générateurs déterministes)
+    "B008",  # Depends() dans les signatures FastAPI
+    "E501",  # longueur de ligne gérée par le formateur
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106"]

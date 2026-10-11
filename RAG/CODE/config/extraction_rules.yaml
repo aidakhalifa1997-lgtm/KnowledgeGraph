@@ -1,0 +1,307 @@
+# =============================================================================
+# Règles d'extraction de relations (extracteur déterministe hors-ligne)
+# -----------------------------------------------------------------------------
+# Principe : dans une phrase, un « déclencheur » (expression régulière appliquée au
+# texte en minuscules et sans accents) relie une mention de type sujet à une mention
+# de type objet. Les types autorisés sont vérifiés ensuite contre l'ontologie.
+#
+# Champs :
+#   relation        : type de relation produit (voir core/ontology.py)
+#   roles           : rôles portés par PARTICIPATES_IN (lead, sponsor, member)
+#   subject_types / object_types
+#   subject_side / object_side : left | right | any (position par rapport au déclencheur)
+#   multi           : none | subjects | objects | both (énumérations « A, B et C »)
+#   implicit        : none | subject | object | both — l'argument manquant peut être
+#                     l'entité décrite par le document (ex. « la présente procédure »)
+#   lookback        : nombre de phrases précédentes où chercher l'argument manquant
+#   max_distance    : distance maximale (caractères) entre déclencheur et argument
+#   confidence      : confiance attribuée aux relations produites
+#
+# Méthodologie : règles mises au point sur les documents D01 à D20 uniquement ;
+# D21 à D35 constituent l'ensemble de test (voir evaluation/extraction_eval.py).
+# =============================================================================
+
+rules:
+  # ------------------------------------------------------------ PARTICIPATES_IN
+  - name: participation_lead
+    relation: PARTICIPATES_IN
+    roles: [lead]
+    subject_types: [Person]
+    object_types: [Project]
+    implicit: object
+    max_distance: 60
+    confidence: 0.85
+    triggers:
+      - "chef(?:fe)? de projet(?! si)"
+      - "porteu(?:r|se) du projet"
+      - "directeur de programme|directrice de programme"
+      - "pilote(?:e)? par"
+      - "dirige le projet"
+
+  - name: participation_sponsor
+    relation: PARTICIPATES_IN
+    roles: [sponsor]
+    subject_types: [Person]
+    object_types: [Project]
+    implicit: object
+    max_distance: 40
+    confidence: 0.85
+    triggers: ["\\bsponsor\\b"]
+
+  - name: participation_member_list
+    relation: PARTICIPATES_IN
+    roles: [member]
+    subject_types: [Person]
+    object_types: [Project]
+    subject_side: right
+    multi: subjects
+    implicit: object
+    max_distance: 250
+    confidence: 0.8
+    cross_semicolon: true
+    triggers:
+      - "equipe(?: projet)?\\s*:"
+      - "appui(?: organisationnel)?\\s*:"
+      - "animation\\s*:"
+
+  - name: participation_member_single
+    relation: PARTICIPATES_IN
+    roles: [member]
+    subject_types: [Person]
+    object_types: [Project]
+    implicit: object
+    max_distance: 60
+    confidence: 0.75
+    triggers:
+      - "referent(?:e)? [a-z-]+ du projet"
+      - "participe(?:nt)? (?:au|a) (?:projet|programme)"
+      - "contribue(?:nt)? au projet"
+      - "en qualite d'observateur"
+
+  # ------------------------------------------------------------ WORKS_IN
+  - name: works_in_trigger
+    relation: WORKS_IN
+    subject_types: [Person]
+    object_types: [Department]
+    subject_side: left
+    object_side: right
+    max_distance: 70
+    confidence: 0.8
+    triggers:
+      - "au sein (?:du|de la|de l'|des)"
+      - "rattache(?:e)?s? (?:a|au)"
+      - "affecte(?:e)?s? (?:a|au)"
+      - "travaille (?:a|au|dans|au sein)"
+      - "responsable (?:du|de la|de l')"
+      - "(?:analyste|juriste|auditeur interne(?: senior)?|consultante?(?: organisation)?(?: senior)?|charge(?:e)? de [a-z ]{3,25}|cheffe? de projet si|ingenieur devops|data scientist|architecte data) (?:a la|a l'|au|a|du|de la|de l')"
+
+  - name: works_in_apposition
+    relation: WORKS_IN
+    subject_types: [Person]
+    object_types: [Department]
+    subject_side: left
+    object_side: right
+    max_distance: 4
+    confidence: 0.75
+    triggers: [", (?:de la |du |de l')?"]
+
+  - name: works_in_head
+    relation: WORKS_IN
+    subject_types: [Person]
+    object_types: [Department]
+    subject_side: right
+    object_side: left
+    max_distance: 70
+    confidence: 0.75
+    triggers:
+      - "dirige(?:e)? par"
+      - "placee? sous la responsabilite (?:de|du)"
+      - "est animee? par"
+
+  - name: works_in_demonstrative
+    relation: WORKS_IN
+    subject_types: [Person]
+    object_types: [Department]
+    subject_side: left
+    object_side: left
+    lookback: 1
+    cross_semicolon: true
+    max_distance: 400
+    confidence: 0.7
+    triggers:
+      - "(?:de|a|au sein de|responsable de) ce (?P<noun>pole|service|bureau|departement|cellule)"
+      - "responsable de la (?P<noun>cellule|direction)\\b(?! [a-z]{3,})"
+      - "en assure la direction"
+
+  - name: works_in_for
+    relation: WORKS_IN
+    subject_types: [Person]
+    object_types: [Department]
+    subject_side: left
+    object_side: right
+    multi: subjects
+    max_distance: 70
+    confidence: 0.7
+    triggers: ["\\bpour (?:la |le |l')"]
+
+  # ------------------------------------------------------------ PART_OF
+  - name: part_of
+    relation: PART_OF
+    subject_types: [Department]
+    object_types: [Department]
+    subject_side: left
+    object_side: right
+    max_distance: 60
+    confidence: 0.85
+    triggers:
+      - "rattache(?:e)?s? (?:a|au)"
+      - "fait partie (?:de|du)"
+      - "qui fait partie de"
+
+  # ------------------------------------------------------------ HAS_EXPERTISE
+  - name: expertise
+    relation: HAS_EXPERTISE
+    subject_types: [Person]
+    object_types: [Domain]
+    subject_side: left
+    object_side: right
+    multi: objects
+    max_distance: 90
+    confidence: 0.8
+    triggers:
+      - "expert(?:e)?s?(?: reconnue?)? (?:en|de|du|des|dans)"
+      - "expertise(?: en| de| du| des)?"
+      - "specialiste (?:de|du|des|en)"
+      - "specialisee? (?:en|dans)"
+      - "competences? (?:secondaire )?(?:en|de)"
+      - "maitrise (?:de|du|des|l')"
+      - "referent(?:e)? (?:en )?"
+      - "experience (?:en|de)"
+
+  # ------------------------------------------------------------ RESPONSIBLE_FOR
+  - name: responsible_for
+    relation: RESPONSIBLE_FOR
+    subject_types: [Person]
+    object_types: [Procedure, System]
+    implicit: object
+    lookback: 2
+    max_distance: 120
+    confidence: 0.85
+    triggers:
+      - "en est (?:le |la )?proprietaire"
+      - "(?:est |sera )?(?:le |la )?proprietaire(?: de la presente procedure| de la procedure| applicati\\w*)?"
+      - "responsable (?:applicati\\w*|fonctionnel\\w*)"
+      - "reste responsable de la procedure"
+      - "administrat(?:eur|rice) fonctionnel\\w*"
+
+  # ------------------------------------------------------------ OWNS
+  - name: owns
+    relation: OWNS
+    subject_types: [Department]
+    object_types: [Procedure]
+    subject_side: right
+    implicit: object
+    max_distance: 60
+    confidence: 0.85
+    triggers:
+      - "releve (?:de la|du|de l')"
+      - "(?:est )?portee par (?:le|la|l')"
+      - "est pilotee par le"
+      - "placee sous la responsabilite (?:du|de la)"
+
+  # ------------------------------------------------------------ DELIVERS
+  - name: delivers
+    relation: DELIVERS
+    subject_types: [Project]
+    object_types: [System]
+    implicit: subject
+    max_distance: 70
+    confidence: 0.8
+    triggers:
+      - "deployer|deploie|deploiement d"
+      - "mise en place d"
+      - "mettre en place"
+      - "met en place"
+      - "livree? par"
+      - "a livre"
+      - "mettre en oeuvre"
+
+  # ------------------------------------------------------------ IMPACTS
+  - name: impacts
+    relation: IMPACTS
+    subject_types: [Project]
+    object_types: [Procedure, System]
+    implicit: both
+    max_distance: 90
+    confidence: 0.75
+    triggers:
+      - "revis\\w*|reviser"
+      - "mettre a jour|mise a jour|mise? a jour"
+      - "refondre|refonte"
+      - "faire evoluer"
+      - "adapter les interfaces"
+      - "integre(?:nt)? (?:les|des) (?:apports|evolutions|resultats)"
+      - "tient compte de la refonte"
+      - "issues du projet"
+      - "(?:elaboree|realisee|redigee) dans le cadre du"
+
+  # ------------------------------------------------------------ DEPENDS_ON
+  - name: depends_on
+    relation: DEPENDS_ON
+    subject_types: [System, Project]
+    object_types: [System, Project]
+    subject_side: left
+    object_side: right
+    multi: both
+    implicit: subject
+    lookback: 2
+    max_distance: 80
+    confidence: 0.85
+    triggers:
+      - "depend(?:ent)?(?: tous)? (?:de|du|d')"
+      - "s'appui(?:e|ent|era) sur"
+      - "repose sur"
+      - "alimentee? (?:en temps reel |quotidiennement |chaque nuit )?(?:par|a partir de)"
+      - "proviendront de"
+
+  # ------------------------------------------------------------ USES
+  - name: uses
+    relation: USES
+    subject_types: [Procedure]
+    object_types: [System]
+    object_side: right
+    multi: objects
+    implicit: subject
+    explicit_subject: false
+    suppressed_by: [DEPENDS_ON]
+    max_distance: 60
+    confidence: 0.75
+    triggers:
+      - "saisi\\w*"
+      - "enregistre\\w* dans"
+      - "archive\\w* dans"
+      - "cloture\\w* dans"
+      - "au moyen de"
+      - "dans l'outil"
+      - "transmis au"
+      - "s'effectue (?:desormais )?dans"
+      - "publie\\w* dans|publication dans"
+      - "chargee? dans"
+      - "decaissement dans"
+
+  # ------------------------------------------------------------ REFERENCES
+  - name: references
+    relation: REFERENCES
+    subject_types: [Procedure]
+    object_types: [Procedure]
+    object_side: right
+    implicit: subject
+    explicit_subject: false
+    max_distance: 80
+    confidence: 0.85
+    triggers:
+      - "conformement a"
+      - "selon la procedure"
+      - "en application de"
+      - "\\bcf\\."
+      - "se referer a"

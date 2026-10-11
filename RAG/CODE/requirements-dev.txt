@@ -1,0 +1,8 @@
+# Dépendances de développement, de test, d'évaluation et de génération des livrables.
+-r requirements.txt
+pytest==9.1.1
+ruff==0.17.0
+pip-audit
+matplotlib==3.11.2
+reportlab==5.0.1
+python-pptx==1.0.2
