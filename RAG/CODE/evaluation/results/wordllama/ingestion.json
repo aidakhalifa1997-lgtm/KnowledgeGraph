@@ -1,0 +1,57 @@
+{
+  "files": 35,
+  "outcomes_at_ingestion": {
+    "ingested": 33,
+    "quarantined": 1,
+    "duplicate": 1
+  },
+  "final_document_status": {
+    "active": 31,
+    "quarantined": 1,
+    "duplicate": 2,
+    "superseded": 1
+  },
+  "full_ingestion_seconds": 18.45,
+  "idempotent_rerun_seconds": 0.38,
+  "idempotent_rerun_unchanged": 35,
+  "stage_seconds_total": {
+    "validation": 0.09,
+    "extraction_texte": 0.19,
+    "nettoyage_metadonnees": 0.07,
+    "decoupage": 0.0,
+    "entites_relations_regles": 5.51,
+    "embeddings": 0.06,
+    "ecriture_neo4j": 4.24,
+    "extraction_texte_ocr": 6.86
+  },
+  "stage_seconds_mean_per_document": {
+    "validation": 0.003,
+    "extraction_texte": 0.006,
+    "nettoyage_metadonnees": 0.002,
+    "decoupage": 0.0,
+    "entites_relations_regles": 0.162,
+    "embeddings": 0.002,
+    "ecriture_neo4j": 0.128,
+    "extraction_texte_ocr": 6.861
+  },
+  "processing_seconds_by_format": {
+    ".pdf": {
+      "n": 15,
+      "mean": 0.913
+    },
+    ".txt": {
+      "n": 11,
+      "mean": 0.15
+    },
+    ".docx": {
+      "n": 9,
+      "mean": 0.187
+    }
+  },
+  "chunks": 169,
+  "relations_extracted": 260,
+  "quality_issues": {
+    "prompt_injection": 1,
+    "ocr_used": 1
+  }
+}

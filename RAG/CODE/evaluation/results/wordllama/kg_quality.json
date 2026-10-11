@@ -1,0 +1,49 @@
+{
+  "nodes_by_label": {
+    "Document": 35,
+    "Department": 19,
+    "Person": 24,
+    "Concept": 25,
+    "Procedure": 9,
+    "Project": 7,
+    "System": 10,
+    "Chunk": 169,
+    "Domain": 16,
+    "IngestionRun": 2
+  },
+  "relationships_by_type": {
+    "MENTIONS": 602,
+    "PART_OF": 178,
+    "NEXT": 137,
+    "SIMILAR_TO": 96,
+    "COVERS": 50,
+    "BELONGS_TO": 41,
+    "AUTHORED_BY": 32,
+    "ISSUED_BY": 32,
+    "PARTICIPATES_IN": 32,
+    "WORKS_IN": 25,
+    "DESCRIBES": 23,
+    "HAS_EXPERTISE": 20,
+    "RESPONSIBLE_FOR": 14,
+    "USES": 12,
+    "DEPENDS_ON": 10,
+    "IMPACTS": 10,
+    "OWNS": 9,
+    "REFERENCES": 7,
+    "DELIVERS": 5,
+    "DUPLICATE_OF": 2,
+    "SUPERSEDES": 1
+  },
+  "extracted_relations": 153,
+  "provenance_coverage": 1.0,
+  "mean_confidence": 0.769,
+  "mean_source_documents_per_relation": 1.667,
+  "relations_supported_by_2plus_documents": 63,
+  "relations_by_extractor": {
+    "rules": 153
+  },
+  "entities_excluding_taxonomy": 69,
+  "mean_entity_degree": 5.1,
+  "isolated_entities": 0,
+  "candidate_entities_pending_review": 0
+}

@@ -1,0 +1,498 @@
+{
+  "rag_vectoriel": {
+    "n": 66,
+    "accuracy_overall": {
+      "n": 66,
+      "mean": 0.6515,
+      "ci95": [
+        0.5303,
+        0.7576
+      ]
+    },
+    "accuracy_answerable": {
+      "n": 55,
+      "mean": 0.5818,
+      "ci95": [
+        0.4545,
+        0.7091
+      ]
+    },
+    "accuracy_by_split": {
+      "developpement": {
+        "n": 17,
+        "mean": 0.8824,
+        "ci95": [
+          0.7059,
+          1.0
+        ]
+      },
+      "jamais_inspectee": {
+        "n": 49,
+        "mean": 0.5714,
+        "ci95": [
+          0.4286,
+          0.7143
+        ]
+      }
+    },
+    "accuracy_by_category": {
+      "access": 1.0,
+      "ambiguous": 0.5,
+      "contradiction": 0.75,
+      "expert": 1.0,
+      "factual": 0.9231,
+      "multi_doc": 0.2857,
+      "multi_hop": 0.3,
+      "relational": 0.125,
+      "security": 1.0,
+      "unanswerable": 1.0
+    },
+    "abstention_recall": 1.0,
+    "abstention_precision": 0.4074,
+    "false_abstention_rate": 0.2909,
+    "conflict_recall": 1.0,
+    "conflict_false_positive_rate": 0.2,
+    "ambiguity_recall": 0.75,
+    "invalid_citations_total": 0,
+    "support_rate_mean": 0.8675,
+    "citation_precision_mean": 0.6799,
+    "cites_essential_document_rate": 0.9744,
+    "context_recall@5": {
+      "n": 55,
+      "mean": 0.7788,
+      "ci95": [
+        0.7181,
+        0.8379
+      ]
+    },
+    "context_ndcg@5": {
+      "n": 55,
+      "mean": 0.7136,
+      "ci95": [
+        0.6502,
+        0.779
+      ]
+    },
+    "forbidden_violations": 0,
+    "access_leaks": 0,
+    "expansion_rate": 0.4697,
+    "latency": {
+      "mean_ms": 37.5,
+      "p50_ms": 36.1,
+      "p95_ms": 53.3,
+      "max_ms": 103.4
+    }
+  },
+  "rag_hybride": {
+    "n": 66,
+    "accuracy_overall": {
+      "n": 66,
+      "mean": 0.6212,
+      "ci95": [
+        0.5,
+        0.7424
+      ]
+    },
+    "accuracy_answerable": {
+      "n": 55,
+      "mean": 0.5636,
+      "ci95": [
+        0.4364,
+        0.6909
+      ]
+    },
+    "accuracy_by_split": {
+      "developpement": {
+        "n": 17,
+        "mean": 0.8235,
+        "ci95": [
+          0.6471,
+          1.0
+        ]
+      },
+      "jamais_inspectee": {
+        "n": 49,
+        "mean": 0.551,
+        "ci95": [
+          0.4082,
+          0.6939
+        ]
+      }
+    },
+    "accuracy_by_category": {
+      "access": 0.75,
+      "ambiguous": 0.5,
+      "contradiction": 0.75,
+      "expert": 1.0,
+      "factual": 0.9231,
+      "multi_doc": 0.4286,
+      "multi_hop": 0.1,
+      "relational": 0.125,
+      "security": 1.0,
+      "unanswerable": 1.0
+    },
+    "abstention_recall": 0.9091,
+    "abstention_precision": 0.5,
+    "false_abstention_rate": 0.1818,
+    "conflict_recall": 1.0,
+    "conflict_false_positive_rate": 0.1429,
+    "ambiguity_recall": 0.75,
+    "invalid_citations_total": 0,
+    "support_rate_mean": 0.8985,
+    "citation_precision_mean": 0.6559,
+    "cites_essential_document_rate": 0.9333,
+    "context_recall@5": {
+      "n": 55,
+      "mean": 0.8576,
+      "ci95": [
+        0.8,
+        0.9091
+      ]
+    },
+    "context_ndcg@5": {
+      "n": 55,
+      "mean": 0.8084,
+      "ci95": [
+        0.7503,
+        0.8607
+      ]
+    },
+    "forbidden_violations": 0,
+    "access_leaks": 0,
+    "expansion_rate": 0.3333,
+    "latency": {
+      "mean_ms": 40.6,
+      "p50_ms": 39.8,
+      "p95_ms": 57.6,
+      "max_ms": 61.8
+    }
+  },
+  "graphrag": {
+    "n": 66,
+    "accuracy_overall": {
+      "n": 66,
+      "mean": 0.5152,
+      "ci95": [
+        0.3939,
+        0.6364
+      ]
+    },
+    "accuracy_answerable": {
+      "n": 55,
+      "mean": 0.4182,
+      "ci95": [
+        0.2909,
+        0.5455
+      ]
+    },
+    "accuracy_by_split": {
+      "developpement": {
+        "n": 17,
+        "mean": 0.7059,
+        "ci95": [
+          0.4706,
+          0.8824
+        ]
+      },
+      "jamais_inspectee": {
+        "n": 49,
+        "mean": 0.449,
+        "ci95": [
+          0.3061,
+          0.5918
+        ]
+      }
+    },
+    "accuracy_by_category": {
+      "access": 0.5,
+      "ambiguous": 0.5,
+      "contradiction": 0.25,
+      "expert": 1.0,
+      "factual": 0.3077,
+      "multi_doc": 0.0,
+      "multi_hop": 0.6,
+      "relational": 0.375,
+      "security": 1.0,
+      "unanswerable": 1.0
+    },
+    "abstention_recall": 1.0,
+    "abstention_precision": 0.2973,
+    "false_abstention_rate": 0.4727,
+    "conflict_recall": 0.75,
+    "conflict_false_positive_rate": 0.1786,
+    "ambiguity_recall": 0.75,
+    "invalid_citations_total": 0,
+    "support_rate_mean": 0.9633,
+    "citation_precision_mean": 0.5508,
+    "cites_essential_document_rate": 0.9655,
+    "context_recall@5": {
+      "n": 55,
+      "mean": 0.783,
+      "ci95": [
+        0.6939,
+        0.8597
+      ]
+    },
+    "context_ndcg@5": {
+      "n": 55,
+      "mean": 0.6873,
+      "ci95": [
+        0.6086,
+        0.7601
+      ]
+    },
+    "forbidden_violations": 0,
+    "access_leaks": 0,
+    "expansion_rate": 0.5606,
+    "latency": {
+      "mean_ms": 58.0,
+      "p50_ms": 58.4,
+      "p95_ms": 89.3,
+      "max_ms": 116.3
+    }
+  },
+  "hybride_graphe_fixe": {
+    "n": 66,
+    "accuracy_overall": {
+      "n": 66,
+      "mean": 0.7727,
+      "ci95": [
+        0.6667,
+        0.8788
+      ]
+    },
+    "accuracy_answerable": {
+      "n": 55,
+      "mean": 0.7455,
+      "ci95": [
+        0.6364,
+        0.8545
+      ]
+    },
+    "accuracy_by_split": {
+      "developpement": {
+        "n": 17,
+        "mean": 0.9412,
+        "ci95": [
+          0.8235,
+          1.0
+        ]
+      },
+      "jamais_inspectee": {
+        "n": 49,
+        "mean": 0.7143,
+        "ci95": [
+          0.5918,
+          0.8367
+        ]
+      }
+    },
+    "accuracy_by_category": {
+      "access": 0.75,
+      "ambiguous": 0.75,
+      "contradiction": 0.75,
+      "expert": 1.0,
+      "factual": 0.9231,
+      "multi_doc": 0.4286,
+      "multi_hop": 0.7,
+      "relational": 0.5,
+      "security": 1.0,
+      "unanswerable": 1.0
+    },
+    "abstention_recall": 0.9091,
+    "abstention_precision": 0.5556,
+    "false_abstention_rate": 0.1455,
+    "conflict_recall": 0.75,
+    "conflict_false_positive_rate": 0.1136,
+    "ambiguity_recall": 0.75,
+    "invalid_citations_total": 0,
+    "support_rate_mean": 0.9467,
+    "citation_precision_mean": 0.6161,
+    "cites_essential_document_rate": 0.9574,
+    "context_recall@5": {
+      "n": 55,
+      "mean": 0.8585,
+      "ci95": [
+        0.7939,
+        0.9182
+      ]
+    },
+    "context_ndcg@5": {
+      "n": 55,
+      "mean": 0.7953,
+      "ci95": [
+        0.7358,
+        0.8548
+      ]
+    },
+    "forbidden_violations": 0,
+    "access_leaks": 0,
+    "expansion_rate": 0.3333,
+    "latency": {
+      "mean_ms": 65.5,
+      "p50_ms": 66.9,
+      "p95_ms": 104.7,
+      "max_ms": 123.1
+    }
+  },
+  "hybride_final": {
+    "n": 66,
+    "accuracy_overall": {
+      "n": 66,
+      "mean": 0.7576,
+      "ci95": [
+        0.6515,
+        0.8636
+      ]
+    },
+    "accuracy_answerable": {
+      "n": 55,
+      "mean": 0.7273,
+      "ci95": [
+        0.6182,
+        0.8364
+      ]
+    },
+    "accuracy_by_split": {
+      "developpement": {
+        "n": 17,
+        "mean": 0.9412,
+        "ci95": [
+          0.8235,
+          1.0
+        ]
+      },
+      "jamais_inspectee": {
+        "n": 49,
+        "mean": 0.6939,
+        "ci95": [
+          0.5714,
+          0.8163
+        ]
+      }
+    },
+    "accuracy_by_category": {
+      "access": 0.75,
+      "ambiguous": 0.75,
+      "contradiction": 0.75,
+      "expert": 1.0,
+      "factual": 0.9231,
+      "multi_doc": 0.4286,
+      "multi_hop": 0.6,
+      "relational": 0.5,
+      "security": 1.0,
+      "unanswerable": 1.0
+    },
+    "abstention_recall": 0.9091,
+    "abstention_precision": 0.5556,
+    "false_abstention_rate": 0.1455,
+    "conflict_recall": 0.75,
+    "conflict_false_positive_rate": 0.1591,
+    "ambiguity_recall": 0.75,
+    "invalid_citations_total": 0,
+    "support_rate_mean": 0.931,
+    "citation_precision_mean": 0.6023,
+    "cites_essential_document_rate": 0.9574,
+    "context_recall@5": {
+      "n": 55,
+      "mean": 0.8591,
+      "ci95": [
+        0.7939,
+        0.9228
+      ]
+    },
+    "context_ndcg@5": {
+      "n": 55,
+      "mean": 0.8271,
+      "ci95": [
+        0.7679,
+        0.8846
+      ]
+    },
+    "forbidden_violations": 0,
+    "access_leaks": 0,
+    "expansion_rate": 0.303,
+    "latency": {
+      "mean_ms": 56.3,
+      "p50_ms": 50.5,
+      "p95_ms": 85.3,
+      "max_ms": 103.6
+    }
+  },
+  "paired_vs_hybride_final": {
+    "rag_vectoriel": {
+      "metric": "correct (hybride_final - autre)",
+      "mean_diff": 0.1061,
+      "ci95": [
+        0.0152,
+        0.197
+      ],
+      "wins": 9,
+      "losses": 2,
+      "ties": 55,
+      "p_value": 0.0654
+    },
+    "rag_hybride": {
+      "metric": "correct (hybride_final - autre)",
+      "mean_diff": 0.1364,
+      "ci95": [
+        0.0455,
+        0.2273
+      ],
+      "wins": 10,
+      "losses": 1,
+      "ties": 55,
+      "p_value": 0.0117
+    },
+    "graphrag": {
+      "metric": "correct (hybride_final - autre)",
+      "mean_diff": 0.2424,
+      "ci95": [
+        0.1364,
+        0.3485
+      ],
+      "wins": 17,
+      "losses": 1,
+      "ties": 48,
+      "p_value": 0.0001
+    },
+    "hybride_graphe_fixe": {
+      "metric": "correct (hybride_final - autre)",
+      "mean_diff": -0.0152,
+      "ci95": [
+        -0.0455,
+        0.0
+      ],
+      "wins": 0,
+      "losses": 1,
+      "ties": 65,
+      "p_value": 1.0
+    }
+  },
+  "classifier_agreement": {
+    "n": 41,
+    "agreement": 0.878,
+    "confusion": {
+      "factual": {
+        "factual": 11,
+        "relational": 2
+      },
+      "multi_hop": {
+        "multi_hop": 9,
+        "relational": 1
+      },
+      "relational": {
+        "relational": 7,
+        "multi_hop": 1
+      },
+      "expert": {
+        "expert": 6
+      },
+      "ambiguous": {
+        "ambiguous": 3,
+        "relational": 1
+      }
+    }
+  },
+  "generator": "extractif (hors-ligne)"
+}

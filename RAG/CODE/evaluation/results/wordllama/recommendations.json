@@ -1,0 +1,607 @@
+{
+  "n_sources": 10,
+  "modes": {
+    "content": {
+      "precision@5": {
+        "n": 10,
+        "mean": 0.44,
+        "ci95": [
+          0.28,
+          0.6
+        ]
+      },
+      "recall@5": {
+        "n": 10,
+        "mean": 0.4967,
+        "ci95": [
+          0.37,
+          0.6333
+        ]
+      },
+      "ndcg@5": {
+        "n": 10,
+        "mean": 0.6477,
+        "ci95": [
+          0.4952,
+          0.7892
+        ]
+      },
+      "mrr": {
+        "n": 10,
+        "mean": 0.92,
+        "ci95": [
+          0.76,
+          1.0
+        ]
+      },
+      "forbidden_recommended": 0,
+      "per_source": {
+        "D02": {
+          "ranking": [
+            "D01",
+            "D34",
+            "D11",
+            "D09",
+            "D29"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.375,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 0.5,
+          "precision@5": 0.8,
+          "ndcg@5": 0.8539
+        },
+        "D04": {
+          "ranking": [
+            "D15",
+            "D01",
+            "D16",
+            "D02",
+            "D10"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.5,
+          "precision@3": 0.6667,
+          "ndcg@3": 0.8344,
+          "recall@5": 0.75,
+          "precision@5": 0.6,
+          "ndcg@5": 0.8467
+        },
+        "D05": {
+          "ranking": [
+            "D20",
+            "D01",
+            "D03",
+            "D02",
+            "D06"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.3333,
+          "precision@3": 0.3333,
+          "ndcg@3": 0.5563,
+          "recall@5": 0.3333,
+          "precision@5": 0.2,
+          "ndcg@5": 0.5563
+        },
+        "D06": {
+          "ranking": [
+            "D10",
+            "D08",
+            "D02",
+            "D09",
+            "D03"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.5,
+          "precision@3": 0.3333,
+          "ndcg@3": 0.2754,
+          "recall@5": 0.5,
+          "precision@5": 0.2,
+          "ndcg@5": 0.2754
+        },
+        "D08": {
+          "ranking": [
+            "D07",
+            "D06",
+            "D02",
+            "D03",
+            "D10"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.3333,
+          "precision@3": 0.3333,
+          "ndcg@3": 0.5563,
+          "recall@5": 0.3333,
+          "precision@5": 0.2,
+          "ndcg@5": 0.5563
+        },
+        "D11": {
+          "ranking": [
+            "D02",
+            "D34",
+            "D29",
+            "D12",
+            "D01"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.6,
+          "precision@3": 1.0,
+          "ndcg@3": 0.8026,
+          "recall@5": 0.8,
+          "precision@5": 0.8,
+          "ndcg@5": 0.8908
+        },
+        "D13": {
+          "ranking": [
+            "D14",
+            "D10",
+            "D35",
+            "D15",
+            "D16"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.4,
+          "precision@3": 0.6667,
+          "ndcg@3": 0.9073,
+          "recall@5": 0.8,
+          "precision@5": 0.8,
+          "ndcg@5": 0.9195
+        },
+        "D17": {
+          "ranking": [
+            "D02",
+            "D34",
+            "D16",
+            "D01",
+            "D03"
+          ],
+          "mrr": 0.2,
+          "recall@3": 0.0,
+          "precision@3": 0.0,
+          "ndcg@3": 0.0,
+          "recall@5": 0.25,
+          "precision@5": 0.2,
+          "ndcg@5": 0.2544
+        },
+        "D19": {
+          "ranking": [
+            "D07",
+            "D30",
+            "D06",
+            "D11",
+            "D34"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.5,
+          "precision@3": 0.6667,
+          "ndcg@3": 0.9073,
+          "recall@5": 0.5,
+          "precision@5": 0.4,
+          "ndcg@5": 0.8402
+        },
+        "D28": {
+          "ranking": [
+            "D08",
+            "D02",
+            "D34",
+            "D30",
+            "D16"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.2,
+          "precision@3": 0.3333,
+          "ndcg@3": 0.5563,
+          "recall@5": 0.2,
+          "precision@5": 0.2,
+          "ndcg@5": 0.4831
+        }
+      }
+    },
+    "graph": {
+      "precision@5": {
+        "n": 10,
+        "mean": 0.66,
+        "ci95": [
+          0.52,
+          0.78
+        ]
+      },
+      "recall@5": {
+        "n": 10,
+        "mean": 0.8175,
+        "ci95": [
+          0.645,
+          0.9425
+        ]
+      },
+      "ndcg@5": {
+        "n": 10,
+        "mean": 0.8774,
+        "ci95": [
+          0.6964,
+          0.9805
+        ]
+      },
+      "mrr": {
+        "n": 10,
+        "mean": 0.95,
+        "ci95": [
+          0.85,
+          1.0
+        ]
+      },
+      "forbidden_recommended": 0,
+      "per_source": {
+        "D02": {
+          "ranking": [
+            "D01",
+            "D29",
+            "D11",
+            "D12",
+            "D34"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.375,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 0.625,
+          "precision@5": 1.0,
+          "ndcg@5": 0.9026
+        },
+        "D04": {
+          "ranking": [
+            "D15",
+            "D16",
+            "D01",
+            "D02",
+            "D28"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.5,
+          "precision@3": 0.6667,
+          "ndcg@3": 0.9073,
+          "recall@5": 0.75,
+          "precision@5": 0.6,
+          "ndcg@5": 0.9141
+        },
+        "D05": {
+          "ranking": [
+            "D23",
+            "D20",
+            "D28",
+            "D27",
+            "D14"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.6667,
+          "precision@3": 0.6667,
+          "ndcg@3": 0.9073,
+          "recall@5": 1.0,
+          "precision@5": 0.6,
+          "ndcg@5": 0.9871
+        },
+        "D06": {
+          "ranking": [
+            "D18",
+            "D10",
+            "D28",
+            "D22",
+            "D03"
+          ],
+          "mrr": 1.0,
+          "recall@3": 1.0,
+          "precision@3": 0.6667,
+          "ndcg@3": 1.0,
+          "recall@5": 1.0,
+          "precision@5": 0.4,
+          "ndcg@5": 1.0
+        },
+        "D08": {
+          "ranking": [
+            "D07",
+            "D28",
+            "D30",
+            "D19",
+            "D23"
+          ],
+          "mrr": 1.0,
+          "recall@3": 1.0,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 1.0,
+          "precision@5": 0.6,
+          "ndcg@5": 1.0
+        },
+        "D11": {
+          "ranking": [
+            "D12",
+            "D29",
+            "D02",
+            "D01",
+            "D17"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.6,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 0.8,
+          "precision@5": 0.8,
+          "ndcg@5": 0.9403
+        },
+        "D13": {
+          "ranking": [
+            "D10",
+            "D14",
+            "D16",
+            "D15",
+            "D28"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.6,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 0.8,
+          "precision@5": 0.8,
+          "ndcg@5": 0.9377
+        },
+        "D17": {
+          "ranking": [
+            "D03",
+            "D12",
+            "D11",
+            "D29",
+            "D21"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.75,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 1.0,
+          "precision@5": 0.8,
+          "ndcg@5": 0.9904
+        },
+        "D19": {
+          "ranking": [
+            "D07",
+            "D30",
+            "D28",
+            "D22",
+            "D08"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.75,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 1.0,
+          "precision@5": 0.8,
+          "ndcg@5": 1.0
+        },
+        "D28": {
+          "ranking": [
+            "D14",
+            "D22",
+            "D12",
+            "D11",
+            "D04"
+          ],
+          "mrr": 0.5,
+          "recall@3": 0.2,
+          "precision@3": 0.3333,
+          "ndcg@3": 0.117,
+          "recall@5": 0.2,
+          "precision@5": 0.2,
+          "ndcg@5": 0.1016
+        }
+      }
+    },
+    "hybrid": {
+      "precision@5": {
+        "n": 10,
+        "mean": 0.64,
+        "ci95": [
+          0.5,
+          0.78
+        ]
+      },
+      "recall@5": {
+        "n": 10,
+        "mean": 0.7842,
+        "ci95": [
+          0.6191,
+          0.9175
+        ]
+      },
+      "ndcg@5": {
+        "n": 10,
+        "mean": 0.9085,
+        "ci95": [
+          0.8047,
+          0.9742
+        ]
+      },
+      "mrr": {
+        "n": 10,
+        "mean": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "forbidden_recommended": 0,
+      "per_source": {
+        "D02": {
+          "ranking": [
+            "D01",
+            "D29",
+            "D11",
+            "D34",
+            "D03"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.375,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 0.625,
+          "precision@5": 1.0,
+          "ndcg@5": 0.9125
+        },
+        "D04": {
+          "ranking": [
+            "D15",
+            "D16",
+            "D01",
+            "D02",
+            "D28"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.5,
+          "precision@3": 0.6667,
+          "ndcg@3": 0.9073,
+          "recall@5": 0.75,
+          "precision@5": 0.6,
+          "ndcg@5": 0.9141
+        },
+        "D05": {
+          "ranking": [
+            "D20",
+            "D23",
+            "D01",
+            "D03",
+            "D02"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.6667,
+          "precision@3": 0.6667,
+          "ndcg@3": 0.9073,
+          "recall@5": 0.6667,
+          "precision@5": 0.4,
+          "ndcg@5": 0.9073
+        },
+        "D06": {
+          "ranking": [
+            "D18",
+            "D10",
+            "D03",
+            "D02",
+            "D08"
+          ],
+          "mrr": 1.0,
+          "recall@3": 1.0,
+          "precision@3": 0.6667,
+          "ndcg@3": 1.0,
+          "recall@5": 1.0,
+          "precision@5": 0.4,
+          "ndcg@5": 1.0
+        },
+        "D08": {
+          "ranking": [
+            "D07",
+            "D28",
+            "D30",
+            "D06",
+            "D02"
+          ],
+          "mrr": 1.0,
+          "recall@3": 1.0,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 1.0,
+          "precision@5": 0.6,
+          "ndcg@5": 1.0
+        },
+        "D11": {
+          "ranking": [
+            "D29",
+            "D12",
+            "D02",
+            "D01",
+            "D17"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.6,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 0.8,
+          "precision@5": 0.8,
+          "ndcg@5": 0.9403
+        },
+        "D13": {
+          "ranking": [
+            "D14",
+            "D10",
+            "D16",
+            "D15",
+            "D35"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.6,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 0.8,
+          "precision@5": 0.8,
+          "ndcg@5": 0.9377
+        },
+        "D17": {
+          "ranking": [
+            "D03",
+            "D11",
+            "D12",
+            "D29",
+            "D21"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.75,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 1.0,
+          "precision@5": 0.8,
+          "ndcg@5": 0.9904
+        },
+        "D19": {
+          "ranking": [
+            "D07",
+            "D30",
+            "D22",
+            "D28",
+            "D06"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.75,
+          "precision@3": 1.0,
+          "ndcg@3": 1.0,
+          "recall@5": 1.0,
+          "precision@5": 0.8,
+          "ndcg@5": 1.0
+        },
+        "D28": {
+          "ranking": [
+            "D08",
+            "D02",
+            "D11",
+            "D01",
+            "D04"
+          ],
+          "mrr": 1.0,
+          "recall@3": 0.2,
+          "precision@3": 0.3333,
+          "ndcg@3": 0.5563,
+          "recall@5": 0.2,
+          "precision@5": 0.2,
+          "ndcg@5": 0.4831
+        }
+      }
+    }
+  },
+  "paired_hybrid_vs_content_ndcg@5": {
+    "mean_diff": 0.2609,
+    "ci95": [
+      0.1071,
+      0.4371
+    ],
+    "wins": 9,
+    "losses": 0,
+    "ties": 1,
+    "p_value": 0.0039
+  }
+}

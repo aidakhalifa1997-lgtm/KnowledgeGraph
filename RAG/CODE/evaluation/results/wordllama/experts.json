@@ -1,0 +1,712 @@
+{
+  "n_domains": 15,
+  "ours": {
+    "precision@1": {
+      "n": 15,
+      "mean": 1.0,
+      "ci95": [
+        1.0,
+        1.0
+      ]
+    },
+    "recall@3": {
+      "n": 15,
+      "mean": 0.9667,
+      "ci95": [
+        0.9,
+        1.0
+      ]
+    },
+    "ndcg@3": {
+      "n": 15,
+      "mean": 0.9749,
+      "ci95": [
+        0.9381,
+        1.0
+      ]
+    },
+    "mrr": {
+      "n": 15,
+      "mean": 1.0,
+      "ci95": [
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "baseline_mentions": {
+    "precision@1": {
+      "n": 15,
+      "mean": 0.9333,
+      "ci95": [
+        0.8,
+        1.0
+      ]
+    },
+    "recall@3": {
+      "n": 15,
+      "mean": 0.8778,
+      "ci95": [
+        0.7333,
+        1.0
+      ]
+    },
+    "ndcg@3": {
+      "n": 15,
+      "mean": 0.9113,
+      "ci95": [
+        0.7768,
+        0.9952
+      ]
+    },
+    "mrr": {
+      "n": 15,
+      "mean": 0.9444,
+      "ci95": [
+        0.8333,
+        1.0
+      ]
+    }
+  },
+  "paired_ndcg@3": {
+    "mean_diff": 0.0636,
+    "ci95": [
+      -0.0223,
+      0.193
+    ],
+    "wins": 4,
+    "losses": 1,
+    "ties": 10,
+    "p_value": 0.375
+  },
+  "non_experts_in_top3_total": {
+    "ours": 22,
+    "baseline": 25
+  },
+  "per_domain": {
+    "dom:kyc": {
+      "ours": [
+        "per:karim-el-fassi",
+        "per:meryem-zahraoui",
+        "per:salma-idrissi",
+        "per:leila-chraibi",
+        "per:zineb-filali"
+      ],
+      "baseline": [
+        "per:karim-el-fassi",
+        "per:meryem-zahraoui",
+        "per:nadia-benali",
+        "per:salma-idrissi",
+        "per:anas-cherkaoui"
+      ],
+      "gold": {
+        "per:karim-el-fassi": 2,
+        "per:meryem-zahraoui": 1,
+        "per:salma-idrissi": 1
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.3333,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 1.0,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.3333,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 0.6667,
+        "precision@3": 0.6667,
+        "ndcg@3": 0.879
+      },
+      "non_experts_in_top3": {
+        "ours": 0,
+        "baseline": 1
+      }
+    },
+    "dom:labft": {
+      "ours": [
+        "per:nadia-benali",
+        "per:karim-el-fassi",
+        "per:omar-tazi",
+        "per:salma-idrissi",
+        "per:meryem-zahraoui"
+      ],
+      "baseline": [
+        "per:nadia-benali",
+        "per:karim-el-fassi",
+        "per:meryem-zahraoui",
+        "per:salma-idrissi",
+        "per:ghita-sebti"
+      ],
+      "gold": {
+        "per:nadia-benali": 2,
+        "per:karim-el-fassi": 1
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 1,
+        "baseline": 1
+      }
+    },
+    "dom:credit": {
+      "ours": [
+        "per:hajar-ouazzani",
+        "per:mehdi-alaoui",
+        "per:amine-kettani",
+        "per:hamza-squalli",
+        "per:zineb-filali"
+      ],
+      "baseline": [
+        "per:mehdi-alaoui",
+        "per:hajar-ouazzani",
+        "per:hamza-squalli",
+        "per:rachid-bennani",
+        "per:amine-kettani"
+      ],
+      "gold": {
+        "per:mehdi-alaoui": 2,
+        "per:hajar-ouazzani": 1
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 0.3333,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 0.7967
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 1,
+        "baseline": 1
+      }
+    },
+    "dom:continuite": {
+      "ours": [
+        "per:sanaa-lahlou",
+        "per:omar-tazi",
+        "per:badr-naciri",
+        "per:fatima-zohra-alami",
+        "per:hajar-ouazzani"
+      ],
+      "baseline": [
+        "per:sanaa-lahlou",
+        "per:fatima-zohra-alami",
+        "per:hajar-ouazzani",
+        "per:omar-tazi",
+        "per:badr-naciri"
+      ],
+      "gold": {
+        "per:sanaa-lahlou": 2,
+        "per:omar-tazi": 1
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 0.5,
+        "precision@3": 0.3333,
+        "ndcg@3": 0.8262
+      },
+      "non_experts_in_top3": {
+        "ours": 1,
+        "baseline": 2
+      }
+    },
+    "dom:secsi": {
+      "ours": [
+        "per:imane-berrada",
+        "per:badr-naciri",
+        "per:anas-cherkaoui",
+        "per:driss-benjelloun",
+        "per:amine-kettani"
+      ],
+      "baseline": [
+        "per:imane-berrada",
+        "per:badr-naciri",
+        "per:amine-kettani",
+        "per:anas-cherkaoui",
+        "per:driss-benjelloun"
+      ],
+      "gold": {
+        "per:imane-berrada": 2
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 2,
+        "baseline": 2
+      }
+    },
+    "dom:data": {
+      "ours": [
+        "per:youssef-amrani",
+        "per:tarik-haddad",
+        "per:hamza-squalli",
+        "per:badr-naciri",
+        "per:fatima-zohra-alami"
+      ],
+      "baseline": [
+        "per:youssef-amrani",
+        "per:hamza-squalli",
+        "per:tarik-haddad",
+        "per:badr-naciri",
+        "per:fatima-zohra-alami"
+      ],
+      "gold": {
+        "per:youssef-amrani": 2,
+        "per:tarik-haddad": 1
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 0.9639
+      },
+      "non_experts_in_top3": {
+        "ours": 1,
+        "baseline": 1
+      }
+    },
+    "dom:ml": {
+      "ours": [
+        "per:hamza-squalli",
+        "per:tarik-haddad",
+        "per:youssef-amrani",
+        "per:badr-naciri",
+        "per:fatima-zohra-alami"
+      ],
+      "baseline": [
+        "per:hamza-squalli",
+        "per:tarik-haddad",
+        "per:youssef-amrani",
+        "per:badr-naciri",
+        "per:fatima-zohra-alami"
+      ],
+      "gold": {
+        "per:hamza-squalli": 2
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 2,
+        "baseline": 2
+      }
+    },
+    "dom:organisation": {
+      "ours": [
+        "per:zineb-filali",
+        "per:amine-kettani",
+        "per:anas-cherkaoui",
+        "per:ghita-sebti",
+        "per:hajar-ouazzani"
+      ],
+      "baseline": [
+        "per:amine-kettani",
+        "per:zineb-filali",
+        "per:anas-cherkaoui",
+        "per:ghita-sebti",
+        "per:hajar-ouazzani"
+      ],
+      "gold": {
+        "per:amine-kettani": 2,
+        "per:zineb-filali": 2
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 1,
+        "baseline": 1
+      }
+    },
+    "dom:relationclient": {
+      "ours": [
+        "per:kenza-mansouri",
+        "per:zineb-filali",
+        "per:amine-kettani",
+        "per:yassine-belkadi",
+        "per:anas-cherkaoui"
+      ],
+      "baseline": [
+        "per:kenza-mansouri",
+        "per:amine-kettani",
+        "per:zineb-filali",
+        "per:anas-cherkaoui",
+        "per:ghita-sebti"
+      ],
+      "gold": {
+        "per:kenza-mansouri": 2
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 2,
+        "baseline": 2
+      }
+    },
+    "dom:exploitation": {
+      "ours": [
+        "per:omar-tazi",
+        "per:badr-naciri",
+        "per:driss-benjelloun",
+        "per:sanaa-lahlou",
+        "per:amine-kettani"
+      ],
+      "baseline": [
+        "per:omar-tazi",
+        "per:badr-naciri",
+        "per:driss-benjelloun",
+        "per:sanaa-lahlou",
+        "per:amine-kettani"
+      ],
+      "gold": {
+        "per:omar-tazi": 2,
+        "per:badr-naciri": 1
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.6667,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 1,
+        "baseline": 1
+      }
+    },
+    "dom:devops": {
+      "ours": [
+        "per:badr-naciri",
+        "per:youssef-amrani",
+        "per:hamza-squalli",
+        "per:omar-tazi",
+        "per:tarik-haddad"
+      ],
+      "baseline": [
+        "per:badr-naciri",
+        "per:youssef-amrani",
+        "per:hamza-squalli",
+        "per:omar-tazi",
+        "per:tarik-haddad"
+      ],
+      "gold": {
+        "per:badr-naciri": 2
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 2,
+        "baseline": 2
+      }
+    },
+    "dom:donneesperso": {
+      "ours": [
+        "per:ghita-sebti",
+        "per:amine-kettani",
+        "per:anas-cherkaoui",
+        "per:kenza-mansouri",
+        "per:nadia-benali"
+      ],
+      "baseline": [
+        "per:ghita-sebti",
+        "per:amine-kettani",
+        "per:anas-cherkaoui",
+        "per:kenza-mansouri",
+        "per:nadia-benali"
+      ],
+      "gold": {
+        "per:ghita-sebti": 2
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 2,
+        "baseline": 2
+      }
+    },
+    "dom:audit": {
+      "ours": [
+        "per:anas-cherkaoui",
+        "per:amine-kettani",
+        "per:ghita-sebti",
+        "per:kenza-mansouri",
+        "per:zineb-filali"
+      ],
+      "baseline": [
+        "per:anas-cherkaoui",
+        "per:amine-kettani",
+        "per:ghita-sebti",
+        "per:kenza-mansouri",
+        "per:zineb-filali"
+      ],
+      "gold": {
+        "per:anas-cherkaoui": 2
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 2,
+        "baseline": 2
+      }
+    },
+    "dom:architecture": {
+      "ours": [
+        "per:tarik-haddad",
+        "per:badr-naciri",
+        "per:hamza-squalli",
+        "per:imane-berrada",
+        "per:leila-chraibi"
+      ],
+      "baseline": [
+        "per:badr-naciri",
+        "per:hamza-squalli",
+        "per:imane-berrada",
+        "per:leila-chraibi",
+        "per:omar-tazi"
+      ],
+      "gold": {
+        "per:tarik-haddad": 2,
+        "per:youssef-amrani": 1
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 0.5,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 0.5,
+        "precision@3": 0.3333,
+        "ndcg@3": 0.8262
+      },
+      "baseline_metrics": {
+        "mrr": 0.1667,
+        "recall@1": 0.0,
+        "precision@1": 0.0,
+        "ndcg@1": 0.0,
+        "recall@3": 0.0,
+        "precision@3": 0.0,
+        "ndcg@3": 0.0
+      },
+      "non_experts_in_top3": {
+        "ours": 2,
+        "baseline": 3
+      }
+    },
+    "dom:gestionprojet": {
+      "ours": [
+        "per:leila-chraibi",
+        "per:youssef-amrani",
+        "per:badr-naciri",
+        "per:hamza-squalli",
+        "per:imane-berrada"
+      ],
+      "baseline": [
+        "per:leila-chraibi",
+        "per:youssef-amrani",
+        "per:badr-naciri",
+        "per:hamza-squalli",
+        "per:imane-berrada"
+      ],
+      "gold": {
+        "per:leila-chraibi": 2
+      },
+      "ours_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "baseline_metrics": {
+        "mrr": 1.0,
+        "recall@1": 1.0,
+        "precision@1": 1.0,
+        "ndcg@1": 1.0,
+        "recall@3": 1.0,
+        "precision@3": 0.3333,
+        "ndcg@3": 1.0
+      },
+      "non_experts_in_top3": {
+        "ours": 2,
+        "baseline": 2
+      }
+    }
+  }
+}
