@@ -1,0 +1,43 @@
+# --- Secrets : ne JAMAIS versionner ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+RAG/CODE/config/users.local.yaml
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.log
+
+# --- Node / frontend ---
+node_modules/
+RAG/CODE/frontend/dist/
+RAG/CODE/frontend/.vite/
+
+# --- Données d'exécution (générées, volumineuses ou sensibles) ---
+RAG/runtime/
+RAG/CODE/runtime/
+neo4j_data/
+backups/
+*.dump
+RAG/data/uploads/
+
+# --- Divers ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+~$*
+.~lock.*
+RAG/RESEARCH PAPERS/pdf/
