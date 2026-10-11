@@ -13,6 +13,7 @@ from functools import cached_property
 
 from core.llm import LLMClient, build_llm
 from core.settings import CODE_DIR, Settings, get_settings
+from expert_discovery.service import ExpertService
 from extraction.linker import EntityLinker
 from extraction.llm_extractor import LLMExtractor
 from extraction.referential import Referential, load_referential
@@ -21,7 +22,6 @@ from ingestion.pipeline import IngestionPipeline
 from ingestion.processor import DocumentProcessor
 from knowledge_graph.client import Neo4jClient
 from knowledge_graph.repository import GraphRepository
-from expert_discovery.service import ExpertService
 from orchestration.sufficiency import TermStatistics
 from orchestration.workflow import QAWorkflow
 from recommendations.service import RecommendationService

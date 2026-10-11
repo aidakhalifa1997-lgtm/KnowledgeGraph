@@ -23,7 +23,7 @@ from collections import Counter, defaultdict
 
 from core.llm import build_llm
 from core.settings import CODE_DIR, get_settings
-from evaluation.datasets import DEV_DOCS, TEST_DOCS, documents_dir, load_gold_documents, load_yaml
+from evaluation.datasets import DEV_DOCS, documents_dir, load_gold_documents, load_yaml
 from extraction.linker import EntityLinker
 from extraction.llm_extractor import LLMExtractor
 from extraction.referential import load_referential

@@ -16,7 +16,15 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from core.models import CandidateEntity, ChunkRecord, DocumentRecord, ExtractedRelation, Mention, QualityIssue, StageTiming
+from core.models import (
+    CandidateEntity,
+    ChunkRecord,
+    DocumentRecord,
+    ExtractedRelation,
+    Mention,
+    QualityIssue,
+    StageTiming,
+)
 from core.settings import Settings
 from core.text import normalize_key, slugify
 from extraction.linker import EntityLinker

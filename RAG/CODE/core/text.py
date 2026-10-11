@@ -127,5 +127,39 @@ def split_sentences(text: str) -> list[str]:
     return sentences
 
 
+def text_units(text: str) -> list[str]:
+    """Découpe un passage en unités de sens : une phrase, ou une phrase d'introduction
+    (« ... comme suit : ») suivie de ses puces, qui n'ont de sens qu'ensemble."""
+    units: list[str] = []
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    header: list[str] | None = None
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith("|"):
+            # Tableau : chaque ligne est rattachée aux intitulés de colonnes.
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if header is None:
+                header = cells
+            else:
+                pairs = [f"{h} : {c}" for h, c in zip(header[1:], cells[1:], strict=False)]
+                units.append(f"{cells[0]} — " + " ; ".join(pairs) + ".")
+            i += 1
+            continue
+        header = None
+        if line.endswith(":") and i + 1 < len(lines) and lines[i + 1].startswith(("-", "•")):
+            items = []
+            j = i + 1
+            while j < len(lines) and lines[j].startswith(("-", "•")) and len(" ".join(items)) < 400:
+                items.append(lines[j].lstrip("-• ").rstrip(" ;."))
+                j += 1
+            units.append(f"{line} {' ; '.join(items)}.")
+            i = j
+            continue
+        units += split_sentences(line)
+        i += 1
+    return units
+
+
 def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", normalize_key(text)).strip("-")

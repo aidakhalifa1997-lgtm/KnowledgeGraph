@@ -25,7 +25,7 @@ def merge_relations(relations: list[ExtractedRelation]) -> list[ExtractedRelatio
         current.roles = sorted(set(current.roles) | set(rel.roles))
         if rel.extractor not in extractors[key]:
             extractors[key].add(rel.extractor)
-            current.confidence = min(1.0, max(current.confidence, rel.confidence) + AGREEMENT_BONUS)
+            current.confidence = round(min(1.0, max(current.confidence, rel.confidence) + AGREEMENT_BONUS), 3)
         else:
             current.confidence = max(current.confidence, rel.confidence)
     for key, rel in merged.items():

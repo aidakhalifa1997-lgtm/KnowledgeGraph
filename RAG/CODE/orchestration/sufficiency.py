@@ -20,7 +20,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
-from core.text import content_terms, fold_accents, light_stem, normalize_key, split_sentences
+from core.text import content_terms, fold_accents, light_stem, normalize_key, text_units
 
 _QUANTITY = re.compile(r"\d+(?:[.,]\d+)?\s*(%|mois|jours?|heures?|minutes?|ans|mad)(?!\w)", re.IGNORECASE)
 # Nombre « nu » d'au moins deux chiffres (score, montant), hors années et codes (PRC-KYC-001).
@@ -112,7 +112,9 @@ def assess(question: str, context_texts: list[str], seed_surfaces: list[list[str
             terms_here = {term_key(t) for t in content_terms(sentence)}
             return len(focus & terms_here) >= 2 and (top_term is None or top_term in terms_here)
 
-        if not any(answers_value(sent) for text in context_texts for sent in split_sentences(text)):
+        # Unités de sens (et non phrases isolées) : une puce « risque élevé : 12 mois » se lit
+        # avec sa phrase d'introduction (« La fréquence de revue périodique est... : »).
+        if not any(answers_value(unit) for text in context_texts for unit in text_units(text)):
             sufficient = False
             missing.append("valeur chiffrée")
     if sufficient:
