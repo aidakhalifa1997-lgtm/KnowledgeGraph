@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from functools import lru_cache
 
 _APOSTROPHES = str.maketrans({"’": "'", "‘": "'", "`": "'", "´": "'", "ʼ": "'"})
 _QUOTES = str.maketrans({"«": '"', "»": '"', "“": '"', "”": '"'})
@@ -20,7 +21,8 @@ STOPWORDS = set(
     celui celles cela ça ont avait avaient sera seront doit doivent peut peuvent fait faire
     lors afin ainsi aussi tout tous toute toutes chaque entre vers chez sans sous selon plus
     moins très bien encore déjà toujours dont si non oui être avoir a-t-il a-t-elle
-    t-il t-elle t-on y-a-t-il existe existent
+    t-il t-elle t-on y-a-t-il existe existent est-elle est-il sont-ils sont-elles a-t-elle a-t-on
+    peut-on doit-on faut-il quelle quels
     """.split()
 )
 
@@ -72,19 +74,34 @@ def tokenize(text: str) -> list[str]:
     return _TOKEN_RE.findall(norm)
 
 
+_INTERROGATIVE_SUFFIX = re.compile(r"-(t-)?(il|elle|ils|elles|on)$")
+_ACCENTED_TOKEN = re.compile(r"[0-9a-zà-öø-ÿœ][0-9a-zà-öø-ÿœ%-]*")
+
+
 def content_terms(text: str) -> list[str]:
-    """Termes porteurs de sens (sans mots outils, longueur >= 2)."""
-    return [t for t in tokenize(text) if t not in STOPWORDS and len(t) >= 2]
+    """Termes porteurs de sens, en minuscules AVEC accents (nécessaires au stemmer), sans mots
+    outils. Les formes interrogatives « compte-t-elle », « peut-on » sont ramenées au verbe."""
+    lowered = normalize_unicode(text).lower().replace("'", " ")
+    terms = []
+    for token in _ACCENTED_TOKEN.findall(lowered):
+        token = _INTERROGATIVE_SUFFIX.sub("", token).strip("-")
+        if len(token) >= 2 and fold_accents(token) not in STOPWORDS:
+            terms.append(token)
+    return terms
 
 
+@lru_cache(maxsize=1)
+def _snowball():
+    import snowballstemmer
+
+    return snowballstemmer.stemmer("french")
+
+
+@lru_cache(maxsize=50000)
 def light_stem(token: str) -> str:
-    """Racinisation légère du français (pluriels et quelques suffixes fréquents).
-    Suffisante pour la couverture lexicale ; pas un analyseur morphologique complet."""
-    for suffix in ("ements", "ement", "ations", "ation", "ites", "ite", "euses", "euse", "eurs", "eur",
-                   "ees", "ee", "es", "s", "e"):
-        if len(token) > len(suffix) + 3 and token.endswith(suffix):
-            return token[: -len(suffix)]
-    return token
+    """Racine d'un mot français : algorithme Snowball (Porter adapté au français), sans accents.
+    Utilisée pour comparer les mots indépendamment de leurs flexions (refus / refusée)."""
+    return fold_accents(_snowball().stemWord(token.lower()))
 
 
 _SENT_BOUNDARY = re.compile(r"(?<=[.!?])\s+(?=[A-ZÉÈÀÂÎÔÛÇ0-9«\"(])")

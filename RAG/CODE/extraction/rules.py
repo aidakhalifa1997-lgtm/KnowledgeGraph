@@ -158,15 +158,19 @@ class RuleExtractor:
                 p_start, p_end, _ = spans[s_idx - back]
                 previous.extend(_Cand(m, s_start, s_start, virtual=True) for m in linked
                                 if p_start <= m.start and m.end <= p_end)
-            if s_idx >= 1:
+            pronoun_match = _PRONOUN_START.match(sentence)
+            pronoun = bool(pronoun_match)
+            previous_sentence: list[_Cand] = []
+            if s_idx >= 1 and pronoun_match:
+                # Le pronom (« Elle ») occupe une position réelle dans la phrase : on y place la
+                # première mention de chaque type de la phrase précédente (son sujet probable),
+                # afin que la distance au déclencheur soit calculée correctement.
                 p_start, p_end, _ = spans[s_idx - 1]
-                previous_sentence = [_Cand(m, s_start, s_start, virtual=True) for m in linked
-                                     if p_start <= m.start and m.end <= p_end]
-            else:
-                previous_sentence = []
-            for rank, cand in enumerate(previous_sentence):
-                cand.rank = rank
-            pronoun = bool(_PRONOUN_START.match(sentence))
+                seen_types: set[str] = set()
+                for m in linked:
+                    if p_start <= m.start and m.end <= p_end and m.entity_type not in seen_types:
+                        seen_types.add(m.entity_type)
+                        previous_sentence.append(_Cand(m, s_start, s_start + pronoun_match.end()))
             produced: list[tuple[str, str, str]] = []
             normalized, mapping = normalize_with_map(sentence)
 

@@ -20,6 +20,11 @@
 # possible) ; échantillon trop petit pour des conclusions statistiques fortes.
 # =============================================================================
 
+# Questions consultées pendant la mise au point du workflow (classification, suffisance,
+# génération extractive). Les métriques sont rapportées séparément sur ces questions et sur
+# les autres (jamais inspectées), afin de mesurer un éventuel biais d'optimisation.
+development_questions: [Q01, Q07, Q10, Q13, Q21, Q23, Q39, Q45, Q49, Q50, Q52, Q57, Q58, Q61, Q62, Q65, Q66]
+
 defaults:
   user: admin
   expected_abstain: false

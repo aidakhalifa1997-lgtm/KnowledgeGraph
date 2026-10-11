@@ -32,6 +32,12 @@ guide. Ils ne s'appuient pas sur les sorties du système pour l'ensemble de test
 - D28 (relecture de l'ensemble de test, texte seul) : retrait de `sys:sentinel-kyc DEPENDS_ON sys:corenova` (dépendance suggérée par un impact, non affirmée).
 - Relations de rattachement par titre ou par parenthèse (WORKS_IN) ajoutées sur l'ensemble du corpus après relecture systématique.
 
+## Journal des modifications du système après le gel des règles
+
+| Date | Modification | Origine | Effet sur l'impartialité du test |
+|---|---|---|---|
+| 2026-10-11 | Pronom en début de phrase positionné à sa place réelle (au lieu d'une mention « virtuelle » lointaine) | Fait erroné observé lors d'une démonstration de recherche (D29, document de test) : « Projet Sentinel a livré CoreNova » | Le cas D29 n'est plus strictement aveugle ; correction générique (non spécifique au document) |
+
 ## Limites
 
 Un seul annotateur, qui est aussi l'auteur du corpus et des règles : pas d'accord inter-annotateurs

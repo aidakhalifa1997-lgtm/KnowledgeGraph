@@ -1,0 +1,27 @@
+# =============================================================================
+# Pondération des preuves d'expertise (recherche d'experts)
+# -----------------------------------------------------------------------------
+# Principe (approche « centrée documents », Balog et al., 2006) : l'expertise d'une
+# personne dans un domaine est estimée par l'agrégation de preuves documentaires typées.
+# Les poids traduisent la force probante de chaque type de preuve ; ils sont fixés a
+# priori (jugement métier) et documentés, puis évalués (voir evaluation/expert_eval.py).
+#
+# Une simple co-mention (personne citée à côté d'un concept du domaine) est
+# volontairement très faible et plafonnée : être mentionné n'est pas être expert.
+# =============================================================================
+weights:
+  declared_expertise: 3.0      # « experte en LAB-FT », « spécialiste de... » (relation HAS_EXPERTISE)
+  validated_skill_bonus: 0.5   # bonus si la déclaration provient du référentiel RH validé
+  project_lead: 2.0            # pilote d'un projet du domaine
+  procedure_owner: 2.0         # propriétaire d'une procédure du domaine
+  project_member: 1.0          # membre de l'équipe d'un projet du domaine
+  system_owner: 1.0            # responsable d'une application utilisée/livrée dans le domaine
+  authored_document: 0.8       # rédacteur d'un document décrivant une procédure/un projet du domaine
+  project_sponsor: 0.3         # sponsor (rôle de gouvernance, faible indice d'expertise)
+  co_mention: 0.1              # par passage, plafonné
+  co_mention_cap: 0.5
+recency:
+  half_life_years: 3.0         # une preuve de 3 ans compte moitié moins qu'une preuve récente
+repetition:
+  extra_document_bonus: 0.25   # bonus par document supplémentaire confirmant la même preuve
+  max_extra_documents: 3
