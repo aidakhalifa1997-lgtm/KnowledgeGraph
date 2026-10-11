@@ -1,0 +1,68 @@
+# =============================================================================
+# Utilisateurs de DÉMONSTRATION (corpus fictif uniquement)
+# -----------------------------------------------------------------------------
+# Mot de passe commun de démonstration : Demo-Orizia-2026
+# Ces comptes n'ont de sens qu'avec les données synthétiques du dépôt. Pour tout autre
+# usage, créer un fichier `config/users.local.yaml` (ignoré par Git) avec
+# `python -m scripts.create_user` et pointer USERS_FILE vers ce fichier.
+# Rôles : viewer < manager (recherche d'experts) < admin (documents, ingestion).
+# Groupes : ALL (documents diffusés à tous) + directions (diffusion restreinte).
+# =============================================================================
+users:
+- username: admin
+  display_name: Administrateur de la plateforme
+  roles:
+  - admin
+  groups:
+  - ALL
+  - DG
+  - DCONF
+  - DRISK
+  - DSI
+  - DOP
+  - DRC
+  - DOT
+  - DRH
+  - DJUR
+  - DAI
+  password_hash: pbkdf2_sha256$600000$n66G1CfJoKk3BojeLbKw3A==$PvP1sEOcEEMhd8byqvBkxMYhWT4BuFlW5LVlg8xk5rg=
+- username: manager.conformite
+  display_name: Responsable conformité (démo)
+  roles:
+  - manager
+  groups:
+  - ALL
+  - DCONF
+  password_hash: pbkdf2_sha256$600000$FELhEaHRIZ9iyG1n0eCY1A==$5ek07TSmxLwuTriwS+TXMQDmRHMah6ZursMARuvxw28=
+- username: analyste.conformite
+  display_name: Analyste conformité (démo)
+  roles:
+  - viewer
+  groups:
+  - ALL
+  - DCONF
+  password_hash: pbkdf2_sha256$600000$1VT+tiwBUaqMjFEKuJib5A==$ydcImqihQg2JxItr3QUOzrtA65Xf0PoJcVxv5orVt6Y=
+- username: ingenieur.dsi
+  display_name: Ingénieur DSI (démo)
+  roles:
+  - viewer
+  groups:
+  - ALL
+  - DSI
+  password_hash: pbkdf2_sha256$600000$teebh5T+vkLZwdM7MB282g==$c39hPS/ae7LJD0nLeftJ8HkMayfL25aJmihKz3LcagE=
+- username: auditeur
+  display_name: Auditeur interne (démo)
+  roles:
+  - manager
+  groups:
+  - ALL
+  - DAI
+  - DCONF
+  password_hash: pbkdf2_sha256$600000$Ehj002QxZtrCjAvO1Ysn+A==$FzQQzsCvrsPjrD3AeZyjsWxR5OfUzf1B4j+el9wqLco=
+- username: collaborateur
+  display_name: Collaborateur (démo)
+  roles:
+  - viewer
+  groups:
+  - ALL
+  password_hash: pbkdf2_sha256$600000$4GdTbY+3BZxzsuSSIk5oow==$IqNjnIuJw/LYTL6NOhvZXjX1LhlQ9u0Yf11Y91nEK1o=
