@@ -160,22 +160,28 @@ class GraphRetriever:
         if any(s.get("type") == "Domain" for s in seeds):
             types.append("BELONGS_TO")
 
+        # Sous-graphe local : relations visibles à 1 saut des graines, puis (si hops = 2) à 1 saut
+        # de ce premier voisinage. L'expansion par niveaux donne exactement l'ensemble des relations
+        # des chemins de longueur <= 2, sans énumérer les chemins ni tronquer arbitrairement.
+        visible = "type(r) IN $types AND (r.source = 'referential' OR any(d IN r.source_doc_ids WHERE d IN $allowed))"
         rows = self.client.read(
             f"""MATCH (s:Entity) WHERE s.id IN $seeds
-                CALL (s) {{
-                    MATCH p = (s)-[rels*1..{int(hops)}]-(n:Entity)
-                    WHERE all(r IN rels WHERE type(r) IN $types
-                              AND (r.source = 'referential' OR any(d IN r.source_doc_ids WHERE d IN $allowed)))
-                    RETURN p LIMIT 600
+                OPTIONAL MATCH (s)-[r]-(n:Entity) WHERE {visible}
+                WITH collect(DISTINCT r) AS level1, collect(DISTINCT n) AS frontier
+                CALL (frontier) {{
+                    UNWIND CASE WHEN $hops > 1 THEN frontier ELSE [] END AS f
+                    MATCH (f)-[r]-(:Entity) WHERE {visible}
+                    RETURN collect(DISTINCT r) AS level2
                 }}
-                UNWIND relationships(p) AS r
+                UNWIND level1 + level2 AS r
                 WITH DISTINCT r
                 WITH r, startNode(r) AS a, endNode(r) AS b
                 RETURN a.id AS s, a.name AS s_name, a.type AS s_type, type(r) AS rel, b.id AS o, b.name AS o_name,
                        b.type AS o_type, coalesce(r.roles, []) AS roles, coalesce(r.confidence, 0.7) AS conf,
                        coalesce(r.source_doc_ids, []) AS docs, coalesce(r.evidence_chunk_ids, []) AS chunks,
-                       coalesce(r.evidence_quotes, []) AS quotes, r.source AS source""",
-            seeds=[s["id"] for s in seeds], types=types, allowed=allowed)
+                       coalesce(r.evidence_quotes, []) AS quotes, r.source AS source
+                ORDER BY s, rel, o""",
+            seeds=[s["id"] for s in seeds], types=types, allowed=allowed, hops=int(hops))
         if not rows:
             return result
 
@@ -200,13 +206,14 @@ class GraphRetriever:
                 evidence_quotes=[row["quotes"][j] for j in keep if j < len(row["quotes"])]))
 
         seed_ids = [s["id"] for s in seeds]
-        ppr = personalized_pagerank(list(nodes), edges, seed_ids)
+        # Scores arrondis : l'ordre de sommation flottante ne doit pas départager des ex æquo.
+        ppr = {k: round(v, 10) for k, v in personalized_pagerank(sorted(nodes), edges, seed_ids).items()}
         result.entity_scores = ppr
         result.nodes = nodes
         for fact in facts:
             bonus = 3.0 if fact.relation in intent else 1.0
-            fact.score = (ppr.get(fact.subject_id, 0) + ppr.get(fact.object_id, 0)) * bonus * fact.confidence
-        facts.sort(key=lambda f: -f.score)
+            fact.score = round((ppr.get(fact.subject_id, 0) + ppr.get(fact.object_id, 0)) * bonus * fact.confidence, 10)
+        facts.sort(key=lambda f: (-f.score, f.subject_id, f.relation, f.object_id))
         result.facts = facts[:top_facts]
         for idx, fact in enumerate(result.facts, start=1):
             fact.id = f"F{idx}"
@@ -217,14 +224,15 @@ class GraphRetriever:
             for chunk_id in fact.evidence_chunk_ids:
                 chunk_scores[chunk_id] += fact.score
         top_entities = sorted((e for e in ppr if e not in seed_ids or len(seed_ids) == 1),
-                              key=lambda e: -ppr[e])[:12]
+                              key=lambda e: (-ppr[e], e))[:12]
         if top_entities:
             mention_rows = self.client.read(
                 """MATCH (c:Chunk)-[:MENTIONS]->(e:Entity) WHERE e.id IN $ids AND c.doc_id IN $allowed
                    RETURN c.id AS chunk, collect(e.id) AS entities""", ids=top_entities, allowed=allowed)
             for row in mention_rows:
                 chunk_scores[row["chunk"]] += 0.5 * sum(ppr.get(e, 0.0) for e in row["entities"])
-        result.chunk_scores = sorted(chunk_scores.items(), key=lambda kv: -kv[1])[:top_chunks]
+        result.chunk_scores = sorted(((c, round(v, 10)) for c, v in chunk_scores.items()),
+                                     key=lambda kv: (-kv[1], kv[0]))[:top_chunks]
         result.paths = self._paths(result.facts, seed_ids)
         return result
 

@@ -161,8 +161,11 @@ class QAWorkflow:
         passages, exploration plus profonde, termes de recherche enrichis des alias."""
         t = time.perf_counter()
         top_chunks = [c.id for c in state["retrieval"].chunks[:3]]
-        rows = self.client.read("MATCH (c:Chunk)-[:MENTIONS]->(e:Entity) WHERE c.id IN $ids "
-                                "AND NOT e:Domain RETURN DISTINCT e.id AS id LIMIT 6", ids=top_chunks)
+        rows = self.client.read(
+            """UNWIND range(0, size($ids) - 1) AS i
+               MATCH (c:Chunk {id: $ids[i]})-[:MENTIONS]->(e:Entity) WHERE NOT e:Domain
+               WITH e.id AS id, min(i) AS first
+               RETURN id ORDER BY first, id LIMIT 6""", ids=top_chunks)
         extra_seeds = [r["id"] for r in rows]
         extra_terms = []
         for seed in state.get("seeds", []):

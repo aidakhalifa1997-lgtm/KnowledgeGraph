@@ -95,7 +95,7 @@ class GraphRepository:
     def find_by_hash(self, content_hash: str, exclude_id: str) -> dict | None:
         rows = self.client.read(
             "MATCH (d:Document {content_hash: $h}) WHERE d.id <> $id AND d.status IN $statuses "
-            "RETURN d.id AS id, d.file_name AS file_name LIMIT 1",
+            "RETURN d.id AS id, d.file_name AS file_name ORDER BY d.file_name LIMIT 1",
             h=content_hash, id=exclude_id, statuses=SEARCHABLE_STATUSES)
         return rows[0] if rows else None
 

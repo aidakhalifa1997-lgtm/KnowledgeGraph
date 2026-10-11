@@ -54,7 +54,7 @@ class GraphQueries:
             f"""CALL db.index.fulltext.queryNodes('entity_name_ft', $q, {{limit: 100}}) YIELD node AS e, score
                 WHERE ($types IS NULL OR e.type IN $types) AND {_VISIBLE_ENTITY}
                 RETURN e.id AS id, e.name AS name, e.type AS type, e.status AS status, score
-                ORDER BY score DESC LIMIT $limit""", q=query, types=types, allowed=allowed, limit=limit)
+                ORDER BY score DESC, id LIMIT $limit""", q=query, types=types, allowed=allowed, limit=limit)
 
     def entity(self, entity_id: str, allowed: list[str]) -> dict | None:
         rows = self.client.read(
@@ -155,7 +155,7 @@ class GraphQueries:
                 WHERE type(r) IN $rels AND type(r) <> 'BELONGS_TO' AND {_VISIBLE_REL}
                   AND ($types IS NULL OR e.type IN $types)
                 RETURN e.id AS id, e.name AS name, e.type AS type, e.status AS status, count(r) AS degree
-                ORDER BY degree DESC LIMIT $limit""", rels=SEMANTIC_RELATIONS, types=types, allowed=allowed,
+                ORDER BY degree DESC, id LIMIT $limit""", rels=SEMANTIC_RELATIONS, types=types, allowed=allowed,
             limit=limit)
         ids = [t["id"] for t in top]
         edges = self.client.read(

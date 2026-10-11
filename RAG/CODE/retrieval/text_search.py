@@ -46,7 +46,7 @@ class TextSearch:
             f"""CALL db.index.fulltext.queryNodes('{CHUNK_FULLTEXT}', $q, {{limit: $limit}})
                 YIELD node, score
                 WHERE node.doc_id IN $allowed
-                RETURN node.id AS id, score ORDER BY score DESC LIMIT $k""",
+                RETURN node.id AS id, score ORDER BY score DESC, id LIMIT $k""",
             q=query, limit=max(k * 5, 50), allowed=allowed, k=k)
         return [(r["id"], float(r["score"])) for r in rows]
 
@@ -60,7 +60,7 @@ class TextSearch:
                 f"""CALL db.index.vector.queryNodes('{VECTOR_INDEX}', $pool, $embedding)
                     YIELD node, score
                     WHERE node.doc_id IN $allowed
-                    RETURN node.id AS id, score ORDER BY score DESC LIMIT $k""",
+                    RETURN node.id AS id, score ORDER BY score DESC, id LIMIT $k""",
                 pool=pool, embedding=embedding, allowed=allowed, k=k)
             if len(rows) >= k or pool >= 1000:
                 return [(r["id"], float(r["score"])) for r in rows]
