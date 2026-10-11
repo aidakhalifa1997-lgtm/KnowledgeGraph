@@ -1,0 +1,33 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : PM-INC-2025-118
+Version : 1.0
+Date : 08/10/2025
+Direction propriétaire : Pôle Production et Exploitation
+Rédacteur : Omar Tazi
+Classification : Confidentiel
+Diffusion : Restreinte : DSI, DRISK, DG
+========================================================================
+
+RAPPORT POST-MORTEM — INCIDENT MAJEUR CORENOVA (INC-2025-118)
+Diffusion restreinte : DSI, Direction des Risques, Direction Générale
+
+Rédigé par Omar Tazi, responsable du Pôle Production et Exploitation, expert en gestion des incidents.
+
+1. Chronologie
+- 02/10/2025 09:12 : saturation de la base de données de CoreNova suite à un traitement de purge mal planifié.
+- 09:20 : incident qualifié en P1 dans ServiceDesk Pro.
+- 11:25 : escalade au Directeur des Systèmes d'Information, Driss Benjelloun.
+- 13:40 : rétablissement du service après intervention de Badr Naciri.
+
+2. Impacts
+Orion CRM, qui dépend de CoreNova, a été indisponible pendant toute la durée de l'incident. Par voie de conséquence, Réclam'Online, qui s'appuie sur Orion CRM, n'a pas pu enregistrer de réclamations. Sentinel KYC n'a pas pu créer de comptes. Le chargement nocturne de DataLake Horizon, alimenté par CoreNova, a été décalé de six heures, ce qui a retardé la mise à jour des scores CrediScore.
+
+3. Écarts à la procédure
+L'escalade au DSI est intervenue plus de deux heures après la qualification P1, alors que la procédure PRC-INC-007 impose un délai de 30 minutes. La cellule de crise n'a pas été alertée, contrairement à ce que prévoit la procédure PCA PRC-RSK-006 pour un incident P1 de plus de deux heures. Sanaa Lahlou a été informée a posteriori.
+
+4. Cause racine
+Planification d'un traitement de purge en heures ouvrées sans revue du changement.
+
+5. Actions correctives
+- Interdire les purges en heures ouvrées (responsable : Omar Tazi).
+- Automatiser l'escalade P1 dans ServiceDesk Pro.

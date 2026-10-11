@@ -1,0 +1,36 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : ARCH-DLH-2025-01
+Version : 1.0
+Date : 11/02/2025
+Direction propriétaire : Pôle Architecture et Data
+Rédacteur : Tarik Haddad
+Classification : Interne
+Diffusion : Tous collaborateurs
+========================================================================
+
+# Note d'architecture — DataLake Horizon
+
+Rédacteur : Tarik Haddad, responsable du Pôle Architecture et Data, architecte SI.
+
+## 1. Vue d'ensemble
+
+DataLake Horizon est la plateforme de données livrée par le programme Horizon. Elle suit une architecture en trois zones :
+- zone brute (bronze) : copie fidèle des extractions sources ;
+- zone nettoyée (silver) : données contrôlées, dédoublonnées et pseudonymisées ;
+- zone métier (gold) : jeux de données prêts à l'usage.
+
+## 2. Sources
+
+La plateforme est alimentée chaque nuit par CoreNova (clients, comptes, opérations) et par Orion CRM (interactions commerciales). Une indisponibilité de CoreNova empêche donc le rafraîchissement quotidien de DataLake Horizon.
+
+## 3. Consommateurs
+
+Le moteur de scoring CrediScore s'appuie sur la zone gold de DataLake Horizon pour recalculer ses variables comportementales. Toute dégradation de la plateforme impacte la fraîcheur des scores.
+
+## 4. Exploitation
+
+M. Youssef Amrani est le responsable applicatif de DataLake Horizon. L'industrialisation des chaînes (orchestration, conteneurs, déploiement continu) est assurée par M. Badr Naciri, dont l'expertise DevOps a permis d'automatiser l'ensemble des déploiements.
+
+## 5. Contrôles
+
+Chaque chargement exécute des contrôles qualité des données ; les rejets sont historisés et consultables.

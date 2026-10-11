@@ -1,0 +1,30 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : CR-VDC-ATELIER-01
+Version : 1.0
+Date : 09/07/2024
+Direction propriétaire : Direction Organisation et Transformation
+Rédacteur : Zineb Filali
+Classification : Interne
+Diffusion : Tous collaborateurs
+========================================================================
+
+COMPTE RENDU — ATELIER DE CARTOGRAPHIE DU PROCESSUS RÉCLAMATIONS (PROJET VOIX DU CLIENT)
+
+Date : 9 juillet 2024
+Animation : Zineb Filali et Amine Kettani (DOT)
+Participants : Kenza Mansouri (cheffe de projet), deux chefs d'agence, un représentant de la Direction Juridique
+
+Objectif de l'atelier
+Décrire le processus actuel (As-Is) de traitement des réclamations et identifier les dysfonctionnements avant la conception du processus cible.
+
+Constats As-Is
+- Quatre points d'entrée différents, sans enregistrement centralisé.
+- Aucun délai de réponse formalisé ; certaines réclamations restent sans réponse plus de deux mois.
+- Absence de règle d'escalade pour les réclamations à risque juridique.
+
+Orientations pour le To-Be
+- Point d'entrée unique dans Réclam'Online, avec reprise de la fiche client depuis Orion CRM.
+- Accusé de réception systématique et délais cibles par type de réclamation.
+- Règle d'escalade vers la Direction Juridique.
+
+Amine Kettani, spécialiste de la modélisation des processus (BPM), formalisera le processus cible en notation BPMN pour validation au prochain atelier. La procédure PRC-REC-003 sera ensuite réécrite.

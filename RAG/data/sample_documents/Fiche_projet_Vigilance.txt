@@ -1,0 +1,30 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : PRJ-VIGILANCE-FP
+Version : 1.0
+Date : 03/03/2025
+Direction propriétaire : Cellule LAB-FT
+Rédacteur : Nadia Benali
+Classification : Interne
+Diffusion : Tous collaborateurs
+========================================================================
+
+FICHE PROJET — VIGILANCE
+
+Porteuse du projet : Nadia Benali, responsable de la Cellule LAB-FT et experte en lutte anti-blanchiment depuis plus de dix ans. Elle est également responsable fonctionnelle de l'outil AML Watch.
+Sponsor : Salma Idrissi, Directrice Conformité.
+Équipe : Karim El Fassi (Cellule KYC), Omar Tazi (production informatique).
+
+Objectifs
+- Faire évoluer AML Watch vers une version capable de croiser les alertes avec le niveau de risque client.
+- Réduire de 30 % le nombre de fausses alertes du filtrage des listes de sanctions.
+- Réviser la procédure PRC-LAB-005 pour intégrer les nouveaux scénarios et le circuit de déclaration de soupçon dématérialisé.
+
+Dépendances
+Vigilance dépend du projet Sentinel : la nouvelle version d'AML Watch s'appuiera sur le niveau de risque client fourni par Sentinel KYC. AML Watch reste par ailleurs alimenté par CoreNova pour les opérations.
+
+Calendrier
+Démarrage : mars 2025. Mise en production cible : premier trimestre 2026.
+
+Risques
+- Qualité des données de risque client héritées de l'ancien dispositif.
+- Charge de la Cellule LAB-FT pendant la phase de recette.

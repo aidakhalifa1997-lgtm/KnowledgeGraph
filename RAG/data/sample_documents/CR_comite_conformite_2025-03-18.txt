@@ -1,0 +1,34 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : CR-CONF-2025-03
+Version : 1.0
+Date : 18/03/2025
+Direction propriétaire : Direction Conformité
+Rédacteur : Meryem Zahraoui
+Classification : Interne
+Diffusion : Tous collaborateurs
+========================================================================
+
+COMPTE RENDU — COMITÉ CONFORMITÉ DU 18 MARS 2025
+
+Présidente : Salma Idrissi, Directrice Conformité
+Participants : Karim El Fassi, Nadia Benali, Meryem Zahraoui (secrétaire de séance), Ghita Sebti (Direction Juridique), Anas Cherkaoui (Audit Interne), Rachid Bennani (Direction des Opérations)
+
+1. Fréquence de revue périodique des clients à risque élevé
+
+Karim El Fassi rappelle que la procédure PRC-KYC-001 en vigueur prévoit une revue tous les 24 mois pour les clients à risque élevé. L'Audit Interne recommande de réduire ce délai.
+
+Deux options sont débattues : 18 mois, proposée par la Direction des Opérations pour limiter la charge de travail, ou 12 mois, conforme aux meilleures pratiques. Après discussion, le comité retient une revue tous les 12 mois. La procédure sera mise à jour en version 2.0 et Sentinel KYC paramétré en conséquence.
+
+2. Projet Vigilance
+
+Nadia Benali, dont l'expertise en lutte anti-blanchiment est reconnue par le régulateur, présente le lancement du projet Vigilance. Le comité valide le calendrier.
+
+3. Déclarations de soupçon
+
+Le nombre de déclarations de soupçon est stable par rapport au trimestre précédent. Aucun retard de transmission n'est signalé.
+
+4. Protection des données
+
+Ghita Sebti, juriste spécialisée en protection des données personnelles, rappelle que les informations collectées dans Sentinel KYC doivent respecter le principe de minimisation.
+
+Prochain comité : juin 2025.

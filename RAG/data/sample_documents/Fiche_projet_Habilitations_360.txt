@@ -1,0 +1,25 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : PRJ-HAB360-FP
+Version : 1.0
+Date : 27/01/2025
+Direction propriétaire : Pôle Sécurité des SI
+Rédacteur : Imane Berrada
+Classification : Confidentiel
+Diffusion : Restreinte : DSI, DAI
+========================================================================
+
+FICHE PROJET — HABILITATIONS 360   [CONFIDENTIEL — diffusion DSI et Audit Interne]
+
+Cheffe de projet : Imane Berrada, RSSI, experte en sécurité des systèmes d'information.
+Sponsor : Driss Benjelloun, Directeur des Systèmes d'Information.
+Équipe : Badr Naciri (automatisation), Anas Cherkaoui, auditeur interne à la DAI, en qualité d'observateur indépendant.
+
+Constat de départ
+La dernière mission d'audit a relevé 214 comptes actifs appartenant à des collaborateurs partis, dont 9 disposant de droits d'administration sur CoreNova. La revue des habilitations reposait sur des fichiers Excel envoyés aux managers.
+
+Objectifs
+- Déployer l'outil IAM Gate, dont Imane Berrada sera la propriétaire applicative, pour centraliser les demandes et automatiser les retraits.
+- Mettre à jour la procédure PRC-SEC-004 (gestion des habilitations).
+- Industrialiser la revue semestrielle des habilitations et contrôler la séparation des tâches.
+
+Échéance : septembre 2025.

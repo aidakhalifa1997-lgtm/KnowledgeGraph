@@ -1,0 +1,64 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : CARTO-APP-2025
+Version : 2.0
+Date : 31/03/2025
+Direction propriétaire : Pôle Architecture et Data
+Rédacteur : Tarik Haddad
+Classification : Interne
+Diffusion : Tous collaborateurs
+========================================================================
+
+CARTOGRAPHIE APPLICATIVE — VERSION 2.0 (31/03/2025)
+Établie par le Pôle Architecture et Data.
+
+Pour chaque application : description, responsable applicatif, dépendances amont.
+
+CoreNova
+  Description : système central bancaire (comptes, clients, opérations).
+  Responsable applicatif : Omar Tazi.
+  Dépendances : aucune (système de référence).
+
+Sentinel KYC
+  Description : plateforme d'entrée en relation et de connaissance client.
+  Responsable applicatif : Karim El Fassi.
+  Dépendances : dépend de CoreNova (création de compte, données client).
+
+AML Watch
+  Description : filtrage des listes de sanctions et surveillance des opérations.
+  Responsable applicatif : Nadia Benali.
+  Dépendances : dépend de CoreNova (opérations) ; dépend de Sentinel KYC (niveau de risque client, à partir de 2026).
+
+Orion CRM
+  Description : gestion de la relation client.
+  Responsable applicatif : Kenza Mansouri.
+  Dépendances : dépend de CoreNova (référentiel client).
+
+Réclam'Online
+  Description : portail de gestion des réclamations.
+  Responsable applicatif : Kenza Mansouri.
+  Dépendances : dépend d'Orion CRM.
+
+CrediScore
+  Description : moteur de scoring crédit.
+  Responsable applicatif : Mehdi Alaoui.
+  Dépendances : dépend de DataLake Horizon (variables comportementales).
+
+DataLake Horizon
+  Description : plateforme de données (lakehouse).
+  Responsable applicatif : Youssef Amrani.
+  Dépendances : dépend de CoreNova et d'Orion CRM (chargements nocturnes).
+
+IAM Gate
+  Description : gestion des identités et des habilitations.
+  Responsable applicatif : Imane Berrada.
+  Dépendances : aucune.
+
+DocuFlow
+  Description : gestion électronique des documents (GED).
+  Responsable applicatif : Zineb Filali.
+  Dépendances : aucune.
+
+ServiceDesk Pro
+  Description : gestion des incidents et des demandes.
+  Responsable applicatif : Omar Tazi.
+  Dépendances : aucune.

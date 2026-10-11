@@ -1,0 +1,21 @@
+# =============================================================================
+# Vérité terrain pour les recommandations de documents similaires/liés
+# -----------------------------------------------------------------------------
+# Pour chaque document source : documents jugés pertinents à recommander
+# (2 = fortement lié, 1 = lié). Jugement manuel fondé sur le contenu (même
+# procédure/projet, versions, dépendances, documents de suivi).
+# Les doublons (D31, D32) et le mémo piégé (D33) ne doivent jamais être
+# recommandés.
+# =============================================================================
+queries:
+  D02: {D01: 2, D11: 2, D29: 2, D34: 2, D21: 2, D12: 1, D03: 1, D25: 1}
+  D04: {D15: 2, D16: 2, D14: 1, D02: 1}
+  D05: {D20: 2, D23: 2, D27: 1}
+  D06: {D18: 2, D10: 1}
+  D08: {D28: 2, D07: 2, D30: 1}
+  D11: {D12: 2, D29: 2, D02: 2, D17: 1, D34: 1}
+  D13: {D14: 2, D10: 2, D16: 1, D15: 1, D22: 1}
+  D17: {D03: 2, D12: 1, D11: 1, D21: 1}
+  D19: {D07: 2, D30: 2, D22: 1, D28: 1}
+  D28: {D08: 2, D07: 2, D27: 1, D22: 1, D19: 1}
+forbidden: [D31, D32, D33]

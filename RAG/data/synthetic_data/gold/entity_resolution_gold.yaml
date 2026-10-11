@@ -1,0 +1,43 @@
+# =============================================================================
+# Vérité terrain pour la résolution d'entités (alignement mention -> entité)
+# -----------------------------------------------------------------------------
+# Chaque cas : une mention (forme de surface), son contexte, son type attendu
+# et l'identifiant canonique attendu (null = aucune entité du référentiel ne
+# doit être choisie). Ces cas incluent des variantes orthographiques, des
+# initiales, des fautes de frappe et des alias ambigus.
+# =============================================================================
+cases:
+  - {mention: "Leïla Chraibi", type: Person, context: "Mme Leïla Chraibi présente l'avancement.", expected: per:leila-chraibi}
+  - {mention: "Meriem Zahraoui", type: Person, context: "Meriem Zahraoui assure le suivi.", expected: per:meryem-zahraoui}
+  - {mention: "K. El Fassi", type: Person, context: "validé par K. El Fassi", expected: per:karim-el-fassi}
+  - {mention: "Mme Idrissi", type: Person, context: "Mme Idrissi préside le comité.", expected: per:salma-idrissi}
+  - {mention: "Salma Idrisi", type: Person, context: "Salma Idrisi, Directrice Conformité", expected: per:salma-idrissi}
+  - {mention: "Youssef Amrany", type: Person, context: "M. Youssef Amrany, architecte data", expected: per:youssef-amrani}
+  - {mention: "Fatima-Zohra Alami", type: Person, context: "sponsor : Fatima-Zohra Alami", expected: per:fatima-zohra-alami}
+  - {mention: "SANAA LAHLOU", type: Person, context: "SANAA LAHLOU coordonne le dispositif", expected: per:sanaa-lahlou}
+  - {mention: "Jean Dupont", type: Person, context: "M. Jean Dupont, prestataire externe", expected: null}
+  - {mention: "Karim Bennis", type: Person, context: "Karim Bennis, conseiller en agence", expected: null}
+  - {mention: "Omar", type: Person, context: "Omar a relancé le serveur.", expected: null}
+  - {mention: "Credi-Score", type: System, context: "le moteur Credi-Score", expected: sys:crediscore}
+  - {mention: "ReclamOnline", type: System, context: "saisie dans ReclamOnline", expected: sys:reclamonline}
+  - {mention: "Core Nova", type: System, context: "les données de Core Nova", expected: sys:corenova}
+  - {mention: "CRM Orion", type: System, context: "le CRM Orion", expected: sys:orion-crm}
+  - {mention: "Docuflow", type: System, context: "archivé dans Docuflow", expected: sys:docuflow}
+  - {mention: "IAMGate", type: System, context: "demande dans IAMGate", expected: sys:iamgate}
+  - {mention: "Sentinel", type: null, context: "le comité de pilotage du projet Sentinel a validé le jalon", expected: prj:sentinel}
+  - {mention: "Sentinel", type: null, context: "l'écran de saisie de l'outil Sentinel affiche le profil", expected: sys:sentinel-kyc}
+  - {mention: "Sentinel", type: null, context: "Sentinel est mentionné sans autre précision.", expected: null}
+  - {mention: "Horizon", type: null, context: "le programme Horizon a pris du retard sur ce jalon", expected: prj:horizon-data}
+  - {mention: "Horizon", type: null, context: "la plateforme Horizon reçoit l'ingestion des données chaque nuit", expected: sys:datalake-horizon}
+  - {mention: "Direction de la Conformité", type: Department, context: "la Direction de la Conformité valide", expected: dep:dconf}
+  - {mention: "Pôle Archi & Data", type: Department, context: "rattaché au Pôle Archi & Data", expected: dep:archidata}
+  - {mention: "pôle risque crédit", type: Department, context: "le pôle risque crédit examine", expected: dep:riskcredit}
+  - {mention: "Direction Marketing", type: Department, context: "la Direction Marketing lance une campagne", expected: null}
+  - {mention: "procédure KYC", type: Procedure, context: "conformément à la procédure KYC", expected: prc:PRC-KYC-001}
+  - {mention: "PRC-SEC-004", type: Procedure, context: "selon PRC-SEC-004", expected: prc:PRC-SEC-004}
+  - {mention: "ayants droit économiques", type: Concept, context: "l'identité des ayants droit économiques", expected: con:beneficiaire-effectif}
+  - {mention: "lutte contre le blanchiment", type: Domain, context: "expert en lutte contre le blanchiment", expected: dom:labft}
+  - {mention: "cybersécurité", type: Domain, context: "experte en cybersécurité", expected: dom:secsi}
+  - {mention: "projet Résilience", type: Project, context: "dans le cadre du projet Résilience", expected: prj:resilience}
+  - {mention: "projet Resilience", type: Project, context: "le projet Resilience prévoit", expected: prj:resilience}
+  - {mention: "projet Atlas", type: Project, context: "le projet Atlas démarre", expected: null}

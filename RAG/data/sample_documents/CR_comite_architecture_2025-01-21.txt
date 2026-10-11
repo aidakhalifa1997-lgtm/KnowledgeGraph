@@ -1,0 +1,31 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : CR-ARCHI-2025-01
+Version : 1.0
+Date : 21/01/2025
+Direction propriétaire : Pôle Architecture et Data
+Rédacteur : Tarik Haddad
+Classification : Interne
+Diffusion : Tous collaborateurs
+========================================================================
+
+COMPTE RENDU — COMITÉ D'ARCHITECTURE DU 21 JANVIER 2025
+
+Présents : Driss Benjelloun (DSI), Tarik Haddad (président du comité), Youssef Amrani, Leila Chraibi, Omar Tazi, Rachid Bennani (invité)
+
+1. Dépendances critiques à CoreNova
+
+Tarik Haddad présente la cartographie des dépendances. Le constat est le suivant : Orion CRM, AML Watch et Sentinel KYC dépendent tous de CoreNova en temps réel. CoreNova constitue donc un point unique de défaillance pour la relation client et la conformité.
+
+Le comité demande que le projet Résilience intègre un scénario d'indisponibilité prolongée de CoreNova.
+
+2. Chaîne de scoring
+
+CrediScore repose sur DataLake Horizon pour ses variables comportementales. Youssef Amrani, dont l'expertise en architecture des données est sollicitée sur tous les projets, propose un mode dégradé : utiliser les dernières variables connues si le chargement de la nuit échoue. Proposition acceptée.
+
+3. Standards
+
+Le comité rappelle que toute nouvelle application doit déléguer la gestion de ses droits d'accès à IAM Gate. Tarik Haddad, en tant qu'architecte SI, tiendra à jour le référentiel des standards.
+
+Décisions
+- D1 : scénario d'indisponibilité CoreNova ajouté au périmètre du projet Résilience.
+- D2 : mode dégradé de CrediScore validé.

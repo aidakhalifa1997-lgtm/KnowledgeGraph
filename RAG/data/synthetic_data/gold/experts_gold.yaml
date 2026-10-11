@@ -1,0 +1,26 @@
+# =============================================================================
+# Vérité terrain pour la recherche d'experts (corpus fictif)
+# -----------------------------------------------------------------------------
+# Pertinence graduée : 2 = expert principal, 1 = expertise secondaire.
+# Cette vérité terrain est définie au niveau du « monde » fictif (qui est
+# réellement expert), indépendamment de la façon dont les documents le
+# mentionnent. Les personnes souvent citées sans expertise démontrée (ex. :
+# directeurs présents dans les comités) ne sont volontairement PAS expertes :
+# elles servent à tester la confusion « mention » / « expertise ».
+# =============================================================================
+domains:
+  dom:kyc: {per:karim-el-fassi: 2, per:meryem-zahraoui: 1, per:salma-idrissi: 1}
+  dom:labft: {per:nadia-benali: 2, per:karim-el-fassi: 1}
+  dom:credit: {per:mehdi-alaoui: 2, per:hajar-ouazzani: 1}
+  dom:continuite: {per:sanaa-lahlou: 2, per:omar-tazi: 1}
+  dom:secsi: {per:imane-berrada: 2}
+  dom:data: {per:youssef-amrani: 2, per:tarik-haddad: 1}
+  dom:ml: {per:hamza-squalli: 2}
+  dom:organisation: {per:amine-kettani: 2, per:zineb-filali: 2}
+  dom:relationclient: {per:kenza-mansouri: 2}
+  dom:exploitation: {per:omar-tazi: 2, per:badr-naciri: 1}
+  dom:devops: {per:badr-naciri: 2}
+  dom:donneesperso: {per:ghita-sebti: 2}
+  dom:audit: {per:anas-cherkaoui: 2}
+  dom:architecture: {per:tarik-haddad: 2, per:youssef-amrani: 1}
+  dom:gestionprojet: {per:leila-chraibi: 2}

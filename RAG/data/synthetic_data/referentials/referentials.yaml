@@ -1,0 +1,153 @@
+# =============================================================================
+# Référentiels maîtres de l'entreprise FICTIVE « Orizia Banque »
+# -----------------------------------------------------------------------------
+# Rôle : catalogue d'entités canoniques (identifiant + nom + alias) utilisé pour la
+# résolution d'entités. Dans une banque réelle, ces données proviendraient de
+# l'annuaire RH, de la cartographie applicative (CMDB), du portefeuille projets
+# et du catalogue de procédures.
+#
+# IMPORTANT : ces référentiels ne contiennent AUCUNE relation entre entités
+# (pas d'appartenance, pas de rôle, pas d'expertise). Les relations du graphe
+# proviennent exclusivement des documents. Seule exception, explicitement marquée
+# `source=referential` dans le graphe : la taxonomie des domaines (concept ->
+# domaine, procédure/projet -> domaine), qui relève de la gouvernance documentaire.
+#
+# Toutes les personnes, entités et applications sont fictives.
+# =============================================================================
+
+departments:
+  - {id: dep:dg, name: Direction Générale, aliases: [DG, la Direction Générale]}
+  - {id: dep:dconf, name: Direction Conformité, aliases: [DCONF, Direction de la Conformité, la Conformité]}
+  - {id: dep:kyc, name: Cellule KYC, aliases: [cellule Connaissance Client, Cellule Connaissance Client]}
+  - {id: dep:labft, name: Cellule LAB-FT, aliases: [cellule anti-blanchiment, Cellule Lutte Anti-Blanchiment, cellule LAB-FT]}
+  - {id: dep:drisk, name: Direction des Risques, aliases: [DRISK, Direction Risques]}
+  - {id: dep:riskcredit, name: Pôle Risque de Crédit, aliases: [pôle Risque de Crédit, Pôle Risque Crédit]}
+  - {id: dep:riskop, name: Pôle Risques Opérationnels, aliases: [pôle Risques Opérationnels, Pôle RO]}
+  - {id: dep:dsi, name: Direction des Systèmes d'Information, aliases: [DSI, Direction SI, la DSI]}
+  - {id: dep:archidata, name: Pôle Architecture et Data, aliases: [Pôle Architecture & Data, pôle Architecture et Data, Pôle Archi & Data]}
+  - {id: dep:prod, name: Pôle Production et Exploitation, aliases: [Pôle Production & Exploitation, pôle Production et Exploitation, Production et Exploitation]}
+  - {id: dep:secsi, name: Pôle Sécurité des SI, aliases: [Pôle Sécurité SI, pôle Sécurité des SI, pôle Sécurité SI]}
+  - {id: dep:dop, name: Direction des Opérations, aliases: [DOP, Direction Opérations]}
+  - {id: dep:bocredit, name: Service Back-Office Crédits, aliases: [back-office crédits, Back-Office Crédits, service Back-Office Crédits]}
+  - {id: dep:drc, name: Direction Réseau Commercial, aliases: [DRC, Réseau Commercial, Direction du Réseau Commercial]}
+  - {id: dep:serviceclient, name: Service Relation Client, aliases: [service Relation Client]}
+  - {id: dep:dot, name: Direction Organisation et Transformation, aliases: [DOT, Direction Organisation & Transformation]}
+  - {id: dep:drh, name: Direction des Ressources Humaines, aliases: [DRH, Ressources Humaines]}
+  - {id: dep:djur, name: Direction Juridique, aliases: [DJUR, la Direction Juridique]}
+  - {id: dep:dai, name: Direction de l'Audit Interne, aliases: [DAI, Audit Interne, l'Audit Interne]}
+
+people:
+  - {id: per:salma-idrissi, name: Salma Idrissi, aliases: [S. Idrissi, Mme Idrissi]}
+  - {id: per:karim-el-fassi, name: Karim El Fassi, aliases: [K. El Fassi, M. El Fassi]}
+  - {id: per:nadia-benali, name: Nadia Benali, aliases: [N. Benali, Mme Benali]}
+  - {id: per:youssef-amrani, name: Youssef Amrani, aliases: [Y. Amrani, M. Amrani]}
+  - {id: per:leila-chraibi, name: Leila Chraibi, aliases: [L. Chraibi, Mme Chraibi, Leïla Chraibi]}
+  - {id: per:omar-tazi, name: Omar Tazi, aliases: [O. Tazi, M. Tazi]}
+  - {id: per:imane-berrada, name: Imane Berrada, aliases: [I. Berrada, Mme Berrada]}
+  - {id: per:mehdi-alaoui, name: Mehdi Alaoui, aliases: [M. Alaoui]}
+  - {id: per:sanaa-lahlou, name: Sanaa Lahlou, aliases: [S. Lahlou, Mme Lahlou]}
+  - {id: per:rachid-bennani, name: Rachid Bennani, aliases: [R. Bennani, M. Bennani]}
+  - {id: per:hajar-ouazzani, name: Hajar Ouazzani, aliases: [H. Ouazzani, Mme Ouazzani]}
+  - {id: per:amine-kettani, name: Amine Kettani, aliases: [A. Kettani, M. Kettani]}
+  - {id: per:zineb-filali, name: Zineb Filali, aliases: [Z. Filali, Mme Filali]}
+  - {id: per:hamza-squalli, name: Hamza Squalli, aliases: [H. Squalli, M. Squalli]}
+  - {id: per:kenza-mansouri, name: Kenza Mansouri, aliases: [K. Mansouri, Mme Mansouri]}
+  - {id: per:yassine-belkadi, name: Yassine Belkadi, aliases: [Y. Belkadi, M. Belkadi]}
+  - {id: per:ghita-sebti, name: Ghita Sebti, aliases: [G. Sebti, Mme Sebti]}
+  - {id: per:anas-cherkaoui, name: Anas Cherkaoui, aliases: [A. Cherkaoui, M. Cherkaoui]}
+  - {id: per:soukaina-rami, name: Soukaina Rami, aliases: [S. Rami, Mme Rami]}
+  - {id: per:badr-naciri, name: Badr Naciri, aliases: [B. Naciri, M. Naciri]}
+  - {id: per:meryem-zahraoui, name: Meryem Zahraoui, aliases: [M. Zahraoui, Mme Zahraoui, Meriem Zahraoui]}
+  - {id: per:tarik-haddad, name: Tarik Haddad, aliases: [T. Haddad, M. Haddad]}
+  - {id: per:driss-benjelloun, name: Driss Benjelloun, aliases: [D. Benjelloun, M. Benjelloun]}
+  - {id: per:fatima-zohra-alami, name: Fatima Zohra Alami, aliases: [F. Z. Alami, Mme Alami, Fatima-Zohra Alami]}
+
+systems:
+  - {id: sys:corenova, name: CoreNova, aliases: [Core Nova, système central CoreNova, core banking CoreNova]}
+  - {id: sys:sentinel-kyc, name: Sentinel KYC, aliases: [plateforme Sentinel, outil Sentinel, application Sentinel, Sentinel-KYC]}
+  - {id: sys:amlwatch, name: AML Watch, aliases: [AMLWatch, outil AML Watch]}
+  - {id: sys:orion-crm, name: Orion CRM, aliases: [CRM Orion, Orion]}
+  - {id: sys:docuflow, name: DocuFlow, aliases: [GED DocuFlow, Docuflow]}
+  - {id: sys:crediscore, name: CrediScore, aliases: [moteur CrediScore, Credi-Score]}
+  - {id: sys:iamgate, name: IAM Gate, aliases: [IAMGate, outil IAM Gate]}
+  - {id: sys:datalake-horizon, name: DataLake Horizon, aliases: [plateforme DataLake Horizon, lakehouse Horizon, Data Lake Horizon]}
+  - {id: sys:servicedesk, name: ServiceDesk Pro, aliases: [ServiceDesk, outil ServiceDesk Pro]}
+  - {id: sys:reclamonline, name: Réclam'Online, aliases: [ReclamOnline, Reclam Online, portail Réclam'Online]}
+
+projects:
+  - {id: prj:sentinel, name: Projet Sentinel, aliases: [projet Sentinel], domain: dom:kyc}
+  - {id: prj:horizon-data, name: Programme Horizon Data, aliases: [programme Horizon Data, Horizon Data, programme Horizon], domain: dom:data}
+  - {id: prj:credifast, name: Projet CrediFast, aliases: [projet CrediFast, CrediFast], domain: dom:credit}
+  - {id: prj:vigilance, name: Projet Vigilance, aliases: [projet Vigilance], domain: dom:labft}
+  - {id: prj:habilitations360, name: Projet Habilitations 360, aliases: [projet Habilitations 360, Habilitations 360], domain: dom:secsi}
+  - {id: prj:resilience, name: Projet Résilience, aliases: [projet Résilience, projet Resilience], domain: dom:continuite}
+  - {id: prj:voix-du-client, name: Projet Voix du Client, aliases: [projet Voix du Client, Voix du Client], domain: dom:relationclient}
+
+procedures:
+  - {id: prc:PRC-KYC-001, name: "Procédure d'entrée en relation et de connaissance client", aliases: [PRC-KYC-001, procédure KYC, procédure de connaissance client], domain: dom:kyc}
+  - {id: prc:PRC-CRD-002, name: "Procédure d'octroi de crédit aux particuliers", aliases: [PRC-CRD-002, procédure d'octroi de crédit, procédure crédit], domain: dom:credit}
+  - {id: prc:PRC-REC-003, name: "Procédure de traitement des réclamations clients", aliases: [PRC-REC-003, procédure réclamations, procédure de traitement des réclamations], domain: dom:relationclient}
+  - {id: prc:PRC-SEC-004, name: "Procédure de gestion des habilitations", aliases: [PRC-SEC-004, procédure habilitations, procédure de gestion des habilitations], domain: dom:secsi}
+  - {id: prc:PRC-LAB-005, name: "Procédure de filtrage des opérations et de déclaration de soupçon", aliases: [PRC-LAB-005, procédure LAB-FT, procédure de déclaration de soupçon], domain: dom:labft}
+  - {id: prc:PRC-RSK-006, name: "Procédure du plan de continuité d'activité", aliases: [PRC-RSK-006, procédure PCA, plan de continuité d'activité], domain: dom:continuite}
+  - {id: prc:PRC-INC-007, name: "Procédure de gestion des incidents de production", aliases: [PRC-INC-007, procédure incidents, procédure de gestion des incidents], domain: dom:exploitation}
+  - {id: prc:PRC-DOC-008, name: "Procédure de gestion documentaire", aliases: [PRC-DOC-008, procédure de gestion documentaire], domain: dom:organisation}
+  - {id: prc:PRC-DAT-009, name: "Procédure de gouvernance des données", aliases: [PRC-DAT-009, procédure de gouvernance des données, politique de gouvernance des données], domain: dom:data}
+
+domains:
+  - {id: dom:kyc, name: Conformité KYC, aliases: [connaissance client, KYC, conformité KYC]}
+  - {id: dom:labft, name: Lutte anti-blanchiment, aliases: [LAB-FT, lutte contre le blanchiment, anti-blanchiment, lutte anti-blanchiment]}
+  - {id: dom:credit, name: Risque de crédit, aliases: [risque de crédit, analyse crédit, scoring crédit, octroi de crédit]}
+  - {id: dom:continuite, name: Continuité d'activité, aliases: [continuité d'activité, PCA, gestion de crise]}
+  - {id: dom:riskop, name: Risques opérationnels, aliases: [risques opérationnels, risque opérationnel]}
+  - {id: dom:secsi, name: Sécurité des systèmes d'information, aliases: [sécurité des SI, sécurité SI, cybersécurité, sécurité informatique]}
+  - {id: dom:data, name: Data engineering et gouvernance des données, aliases: [data engineering, gouvernance des données, ingénierie des données]}
+  - {id: dom:ml, name: Machine learning, aliases: [machine learning, apprentissage automatique, data science, NLP]}
+  - {id: dom:gestionprojet, name: Gestion de projet SI, aliases: [gestion de projet, pilotage de projet, conduite de projet]}
+  - {id: dom:organisation, name: Organisation et processus, aliases: [modélisation des processus, BPM, organisation des processus, gouvernance documentaire]}
+  - {id: dom:relationclient, name: Relation client et réclamations, aliases: [gestion des réclamations, relation client, réclamations]}
+  - {id: dom:exploitation, name: Exploitation informatique, aliases: [gestion des incidents, exploitation informatique, ITIL, exploitation IT]}
+  - {id: dom:devops, name: DevOps, aliases: [DevOps, conteneurisation, intégration continue]}
+  - {id: dom:donneesperso, name: Protection des données personnelles, aliases: [protection des données personnelles, protection des données, loi 09-08]}
+  - {id: dom:audit, name: Audit et contrôle interne, aliases: [contrôle interne, audit des processus]}
+  - {id: dom:architecture, name: Architecture SI, aliases: [architecture SI, architecture des systèmes d'information, urbanisation du SI]}
+
+concepts:
+  - {id: con:beneficiaire-effectif, name: Bénéficiaire effectif, aliases: [bénéficiaire effectif, bénéficiaires effectifs, ayant droit économique, ayants droit économiques], domain: dom:kyc}
+  - {id: con:ppe, name: Personne politiquement exposée, aliases: [personne politiquement exposée, personnes politiquement exposées, PPE], domain: dom:kyc}
+  - {id: con:vigilance-renforcee, name: Vigilance renforcée, aliases: [vigilance renforcée, mesures de vigilance renforcée], domain: dom:kyc}
+  - {id: con:niveau-risque-client, name: Niveau de risque client, aliases: [niveau de risque client, classification des risques clients, profil de risque client], domain: dom:kyc}
+  - {id: con:revue-periodique, name: Revue périodique KYC, aliases: [revue périodique, revues périodiques, mise à jour périodique du dossier client], domain: dom:kyc}
+  - {id: con:declaration-soupcon, name: Déclaration de soupçon, aliases: [déclaration de soupçon, déclarations de soupçon], domain: dom:labft}
+  - {id: con:gel-avoirs, name: Gel des avoirs, aliases: [gel des avoirs, gel d'avoirs], domain: dom:labft}
+  - {id: con:filtrage-sanctions, name: Filtrage des listes de sanctions, aliases: [filtrage des listes de sanctions, filtrage sanctions, listes de sanctions, criblage], domain: dom:labft}
+  - {id: con:taux-endettement, name: Taux d'endettement, aliases: [taux d'endettement], domain: dom:credit}
+  - {id: con:score-credit, name: Score de crédit, aliases: [score de crédit, scoring, note de scoring], domain: dom:credit}
+  - {id: con:delegation-pouvoir, name: Délégation de pouvoir, aliases: [délégation de pouvoir, délégations de pouvoir, niveau de délégation], domain: dom:credit}
+  - {id: con:separation-taches, name: Séparation des tâches, aliases: [séparation des tâches, séparation des fonctions], domain: dom:secsi}
+  - {id: con:moindre-privilege, name: Principe du moindre privilège, aliases: [moindre privilège, principe du moindre privilège], domain: dom:secsi}
+  - {id: con:revue-habilitations, name: Revue des habilitations, aliases: [revue des habilitations, revues des habilitations, recertification des accès], domain: dom:secsi}
+  - {id: con:rto, name: RTO, aliases: [RTO, durée maximale d'interruption admissible], domain: dom:continuite}
+  - {id: con:rpo, name: RPO, aliases: [RPO, perte de données maximale admissible], domain: dom:continuite}
+  - {id: con:cellule-crise, name: Cellule de crise, aliases: [cellule de crise], domain: dom:continuite}
+  - {id: con:criticite-incident, name: Criticité d'incident, aliases: [niveau de criticité, criticité, incident majeur, priorité P1], domain: dom:exploitation}
+  - {id: con:post-mortem, name: Post-mortem, aliases: [post-mortem, analyse post-incident, retour d'expérience incident], domain: dom:exploitation}
+  - {id: con:data-owner, name: Propriétaire de données, aliases: [data owner, data owners, propriétaire de données], domain: dom:data}
+  - {id: con:qualite-donnees, name: Qualité des données, aliases: [qualité des données, contrôles qualité des données], domain: dom:data}
+  - {id: con:donnee-personnelle, name: Donnée personnelle, aliases: [données personnelles, donnée personnelle, données à caractère personnel], domain: dom:donneesperso}
+  - {id: con:cycle-validation, name: Cycle de validation documentaire, aliases: [cycle de validation, circuit de validation, comité de validation], domain: dom:organisation}
+  - {id: con:delai-reclamation, name: Délai de traitement des réclamations, aliases: [délai de traitement, délai de réponse, accusé de réception], domain: dom:relationclient}
+  - {id: con:escalade, name: Escalade, aliases: [escalade, escalader, procédure d'escalade], domain: dom:exploitation}
+
+# Alias ambigus : une même forme de surface désigne plusieurs entités.
+# Le résolveur choisit à l'aide d'indices de contexte (mots proches) ; sans indice
+# suffisant, la mention est conservée comme ambiguë et n'est pas reliée.
+ambiguous_aliases:
+  - surface: Sentinel
+    candidates:
+      - {id: prj:sentinel, cues: [projet, comité de pilotage, chef de projet, cheffe de projet, lot, jalon, sponsor]}
+      - {id: sys:sentinel-kyc, cues: [plateforme, outil, application, saisie, écran, module, interface, système]}
+  - surface: Horizon
+    candidates:
+      - {id: prj:horizon-data, cues: [programme, projet, jalon, sponsor, lot, feuille de route]}
+      - {id: sys:datalake-horizon, cues: [plateforme, lakehouse, données, ingestion, stockage, cluster, système]}

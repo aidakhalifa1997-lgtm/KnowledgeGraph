@@ -1,0 +1,38 @@
+ORIZIA BANQUE — document fictif (corpus de démonstration)
+Référence : PRC-INC-007
+Version : 1.1
+Date : 18/11/2024
+Direction propriétaire : Pôle Production et Exploitation
+Rédacteur : Omar Tazi
+Classification : Interne
+Diffusion : Tous collaborateurs
+========================================================================
+
+# Procédure de gestion des incidents de production
+
+## 1. Objet
+
+La présente procédure décrit la détection, la qualification, la résolution et la clôture des incidents affectant les applications en production. Elle relève du Pôle Production et Exploitation de la DSI ; M. Omar Tazi, responsable de ce pôle, en est le propriétaire.
+
+## 2. Enregistrement
+
+Tout incident est enregistré dans l'outil ServiceDesk Pro, que la détection provienne de la supervision, d'un utilisateur ou d'un prestataire.
+
+## 3. Qualification de la criticité
+
+- P1 (incident majeur) : indisponibilité d'une application critique ou impact sur la clientèle ;
+- P2 : dégradation importante sans interruption totale ;
+- P3 : impact limité à un service ;
+- P4 : demande d'assistance ou anomalie mineure.
+
+## 4. Escalade
+
+Un incident P1 est escaladé au Directeur des Systèmes d'Information, M. Driss Benjelloun, dans un délai de 30 minutes après sa qualification. Si la résolution d'un incident P1 dépasse deux heures, la cellule de crise est alertée selon la procédure PCA PRC-RSK-006.
+
+## 5. Résolution et clôture
+
+L'équipe d'astreinte, dont fait partie M. Badr Naciri, ingénieur DevOps au sein du Pôle Production et Exploitation, applique les consignes de rétablissement. L'incident est clôturé dans ServiceDesk Pro après validation par le demandeur.
+
+## 6. Post-mortem
+
+Tout incident P1 donne lieu à un post-mortem dans les dix jours ouvrés. Le rapport identifie la cause racine et les actions correctives.
