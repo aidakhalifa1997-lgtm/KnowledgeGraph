@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     llm_extraction_enabled: bool = False
 
     # --- Embeddings ---
-    embedding_provider: Literal["spacy", "wordllama"] = "spacy"
+    embedding_provider: Literal["spacy", "wordllama"] = "wordllama"
 
     # --- API ---
     app_secret_key: SecretStr = SecretStr("")
@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 8
     candidate_pool: int = 40
     rrf_k: int = 60
+    # Nombre de premiers résultats de chaque source garantis dans le contexte (0 = RRF pure).
+    retrieval_source_guarantee: int = 1
     graph_max_hops: int = 2
     context_char_budget: int = 6000
     sufficiency_threshold: float = 0.55

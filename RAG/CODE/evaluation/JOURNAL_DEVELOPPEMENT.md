@@ -14,3 +14,20 @@ modification après le gel (première exécution de `evaluation/run_all.py`) est
 |---|---|---|---|---|
 | 2026-10 | sufficiency | Contrôle « valeur chiffrée » appliqué aux unités de sens (phrase d'introduction + puces, lignes de tableau avec intitulés) au lieu des phrases isolées | Q57 (développement), test d'intégration `test_workflow_flags_contradiction_and_ambiguity` | avant gel |
 | 2026-10 | merge (extraction) | Arrondi de la confiance fusionnée à 3 décimales (artefact de virgule flottante) | test unitaire `test_evidence_check_and_merge` | avant gel, sans effet sur les résultats |
+| 2026-10 | ingestion (pipeline) | Les durées d'encodage et d'écriture Neo4j sont reportées dans le rapport d'ingestion (copie de liste par Pydantic) | section `ingestion` de l'évaluation | correction de mesure, sans effet sur les réponses |
+| 2026-10 | configuration | **Encodeur par défaut : WordLlama au lieu de spaCy.** Ablation prévue au protocole : nDCG@5 de l'architecture hybride finale sur les 17 questions de développement 0,805 (WordLlama) contre 0,619 (spaCy). La décision est prise sur le split de développement ; les résultats sur toutes les questions ont toutefois été vus avant la décision (choix de configuration *a posteriori*, à signaler dans le mémoire). Les résultats spaCy sont conservés dans `results/spacy/` | ablation `results/spacy` vs `results/wordllama` | **gel de la configuration** après cette décision |
+
+## Gel
+
+La campagne principale (`results/wordllama/`) est exécutée après les modifications ci-dessus.
+Toute modification ultérieure du code des heuristiques ou de la configuration sera ajoutée
+ci-dessous avec la mention « post-gel » et ses effets seront rapportés séparément.
+
+## Modifications post-gel
+
+| Date | Composant | Modification | Déclencheur | Effet mesuré (gel → post-gel) |
+|---|---|---|---|---|
+| 2026-10 | retrieval (fusion) | **Post-gel.** Garantie par source dans la fusion RRF : le premier passage de chaque source active (BM25, vecteurs, graphe) est conservé dans le contexte (`RETRIEVAL_SOURCE_GUARANTEE=1` ; `0` reproduit exactement la configuration gelée). Motivation : un passage classé 1er par BM25 seul (acronyme exact « RTO ») était évincé par des passages moyens présents dans les trois listes. | Q62 (développement) | Recherche, hybride final : nDCG@5 0,838 → 0,844 (jamais inspectées 0,848 → 0,855), couverture des preuves 0,943 → 0,953. Questions-réponses, hybride final : exactitude 0,742 → 0,758 ; développement 0,882 → 0,941 ; **jamais inspectées inchangées (0,694)**. Hybride à graphe fixe : jamais inspectées 0,735 → 0,714 (une question perdue). Résultats : `results/wordllama_postgel/`. |
+
+Reproductibilité vérifiée : relancer la campagne gelée (`RETRIEVAL_SOURCE_GUARANTEE=0`) redonne
+des réponses et des classements identiques sur les 660 lignes (330 recherche + 330 réponses).

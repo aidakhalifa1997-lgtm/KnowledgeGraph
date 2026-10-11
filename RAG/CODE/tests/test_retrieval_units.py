@@ -67,3 +67,12 @@ def test_paths_follow_connected_facts():
     paths = GraphRetriever._paths(facts, ["a"])
     assert ["F1", "F2"] in paths
     assert not any("F3" in p for p in paths)
+
+
+def test_source_guarantee_keeps_lone_top_hit():
+    from retrieval.fusion import fuse_top_k
+
+    rankings = {"lexical": ["L1", "A", "B", "C"], "vector": ["A", "B", "C", "V1"], "graph": ["A", "B", "C", "G1"]}
+    assert [i for i, _, _ in fuse_top_k(rankings, 3, guarantee=0)] == ["A", "B", "C"]
+    assert [i for i, _, _ in fuse_top_k(rankings, 3, guarantee=1)] == ["A", "B", "L1"]
+    assert [i for i, _, _ in fuse_top_k(rankings, 3, weights={"lexical": 0.0}, guarantee=1)] == ["A", "B", "C"]

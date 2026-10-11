@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass, field
 
 from knowledge_graph.client import Neo4jClient
-from retrieval.fusion import reciprocal_rank_fusion
+from retrieval.fusion import fuse_top_k
 from retrieval.graph import GraphRetrieval, GraphRetriever
 from retrieval.text_search import TextSearch
 
@@ -62,12 +62,13 @@ class RetrievalResult:
 
 class Retriever:
     def __init__(self, client: Neo4jClient, text_search: TextSearch, graph: GraphRetriever, *, rrf_k: int = 60,
-                 candidate_pool: int = 40) -> None:
+                 candidate_pool: int = 40, source_guarantee: int = 1) -> None:
         self.client = client
         self.text = text_search
         self.graph = graph
         self.rrf_k = rrf_k
         self.pool = candidate_pool
+        self.source_guarantee = source_guarantee
 
     def hydrate(self, ids: list[str]) -> dict[str, dict]:
         if not ids:
@@ -106,7 +107,7 @@ class Retriever:
             rankings["vector"] = [cid for cid, _ in self.text.vector(query_text, allowed, self.pool)]
             result.timings_ms["vector"] = round((time.perf_counter() - t) * 1000, 1)
 
-        fused = reciprocal_rank_fusion(rankings, k=self.rrf_k, weights={"graph": graph_weight})[:k]
+        fused = fuse_top_k(rankings, k, k=self.rrf_k, weights={"graph": graph_weight}, guarantee=self.source_guarantee)
         details = self.hydrate([cid for cid, _, _ in fused])
         for cid, score, ranks in fused:
             d = details.get(cid)

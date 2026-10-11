@@ -81,7 +81,8 @@ class Services:
     @cached_property
     def retriever(self) -> Retriever:
         return Retriever(self.client, TextSearch(self.client, self.embedder), self.graph_retriever,
-                         rrf_k=self.settings.rrf_k, candidate_pool=self.settings.candidate_pool)
+                         rrf_k=self.settings.rrf_k, candidate_pool=self.settings.candidate_pool,
+                         source_guarantee=self.settings.retrieval_source_guarantee)
 
     @cached_property
     def experts(self) -> ExpertService:

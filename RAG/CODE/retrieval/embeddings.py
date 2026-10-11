@@ -8,7 +8,10 @@ expérimentalement :
   `fr_core_news_md`, mots outils exclus. Méthode classique, simple et explicable, mais qui
   ignore l'ordre des mots et capte mal les nuances de phrase.
 - `wordllama` : encodeur statique (256 dimensions) distillé à partir des embeddings de jetons
-  d'un LLM, entraîné surtout sur de l'anglais.
+  d'un LLM, entraîné surtout sur de l'anglais. **Encodeur par défaut** : retenu après
+  l'ablation de l'évaluation (nDCG@5 de la recherche vectorielle 0,72 contre 0,41 avec spaCy,
+  décision vérifiée sur les seules questions de développement ; voir
+  evaluation/JOURNAL_DEVELOPPEMENT.md).
 
 Ces encodeurs sont moins performants que les modèles neuronaux de phrases (Sentence-BERT,
 modèles multilingues récents). Les conclusions expérimentales en dépendent : voir

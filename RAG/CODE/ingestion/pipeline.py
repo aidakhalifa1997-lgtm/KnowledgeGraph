@@ -109,6 +109,7 @@ class IngestionPipeline:
                                                   message=f"contenu très proche de {sig['file_name']} (Jaccard ≈ {similarity:.2f})"))
 
         self._write(processed, draft)
+        result.timings = list(processed.timings)  # inclut l'encodage et l'écriture Neo4j
         result.outcome = "updated" if state else "ingested"
         result.status = "active"
         result.chunks = len(processed.chunks)
@@ -135,6 +136,7 @@ class IngestionPipeline:
         if other_draft and not draft and record.status == "active":
             # Le document existant est un brouillon/une copie : le nouveau devient canonique.
             self._write(processed, draft)
+            result.timings = list(processed.timings)
             self.repo.mark_duplicate(other_id, record.id)
             result.outcome = "ingested"
             result.status = "active"
