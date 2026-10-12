@@ -1,0 +1,18 @@
+# Contexte de build du backend (dossier RAG/) : seuls le code et les données de démonstration sont utiles.
+**/.env
+**/.env.*
+!.env.example
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/node_modules
+CODE/frontend
+CODE/evaluation/results/figures
+CODE/config/users.local.yaml
+DETAILS
+RAPPORT ET PRESENTATION
+RESEARCH PAPERS
+data/uploads
+backups
+runtime

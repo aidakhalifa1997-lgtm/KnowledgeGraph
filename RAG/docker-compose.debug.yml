@@ -1,0 +1,7 @@
+# Surcharge de débogage : publie Neo4j (navigateur 7474, Bolt 7687) sur la boucle locale uniquement.
+# Ne jamais utiliser sur un serveur exposé.
+services:
+  neo4j:
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"

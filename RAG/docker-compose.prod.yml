@@ -1,0 +1,40 @@
+# =============================================================================
+# Surcharge de production (serveur exposé à Internet) : terminaison TLS par Caddy
+# (certificats Let's Encrypt automatiques), interface non publiée directement.
+# Usage :
+#   DOMAIN=kg.exemple.org ACME_EMAIL=admin@exemple.org \
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Prérequis : enregistrement DNS du domaine vers le serveur, ports 80/443 ouverts,
+# comptes de démonstration remplacés (USERS_FILE pointant vers un fichier non versionné).
+# =============================================================================
+services:
+  frontend:
+    ports: !reset []
+
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:2.8-alpine}
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?Définir DOMAIN (nom de domaine public)}
+      ACME_EMAIL: ${ACME_EMAIL:?Définir ACME_EMAIL (contact Let's Encrypt)}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./CODE/deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt: ["no-new-privileges:true"]
+
+  backend:
+    environment:
+      CORS_ORIGINS: https://${DOMAIN}
+      LOG_LEVEL: INFO
+
+volumes:
+  caddy_data:
+  caddy_config:

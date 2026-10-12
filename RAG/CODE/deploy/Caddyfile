@@ -1,0 +1,17 @@
+# Terminaison TLS et relais vers le conteneur frontend (qui relaie lui-même /api au backend).
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy frontend:8080
+	log {
+		output stdout
+		format json
+	}
+}

@@ -1,0 +1,12 @@
+# Configuration de la détection de secrets : règles par défaut de gitleaks, avec des exceptions
+# limitées aux valeurs FICTIVES documentées (fichier d'exemple, mots de passe des tests).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Valeurs fictives documentées"
+paths = [
+  '''RAG/\.env\.example''',
+  '''RAG/CODE/tests/.*''',
+  '''RAG/CODE/config/users\.example\.yaml''',
+]

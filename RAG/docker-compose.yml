@@ -1,0 +1,76 @@
+# =============================================================================
+# Plateforme de gestion des connaissances — déploiement local ou sur un serveur.
+# Démarrage : cp .env.example .env (puis renseigner les secrets) ; docker compose up -d --build
+# Premier chargement du corpus : docker compose exec backend python -m scripts.ingest
+# Interface : http://localhost:${HTTP_PORT:-8080}
+# =============================================================================
+name: orizia-kg
+
+services:
+  neo4j:
+    image: ${NEO4J_IMAGE:-neo4j:5.26-community}
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?Définir NEO4J_PASSWORD dans le fichier .env}
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1g
+      NEO4J_server_memory_pagecache_size: 512m
+      NEO4J_server_config_strict__validation_enabled: "true"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - ./backups:/backups
+    # Pas de port publié : la base n'est joignable que par le backend. Pour ouvrir Neo4j Browser
+    # en local : docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: CODE/Dockerfile
+      args:
+        BASE_IMAGE: ${UBUNTU_IMAGE:-ubuntu:24.04}
+    image: orizia-kg-backend:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      DOCUMENTS_DIR: /app/data/sample_documents
+      UPLOADS_DIR: /app/data/uploads
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+    volumes:
+      - uploads:/app/data/uploads
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ["/tmp:size=256m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+  frontend:
+    build:
+      context: CODE/frontend
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+        NGINX_IMAGE: ${NGINX_UNPRIVILEGED_IMAGE:-nginxinc/nginx-unprivileged:1.27-alpine}
+    image: orizia-kg-frontend:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    ports: ["${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:8080"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  uploads:
