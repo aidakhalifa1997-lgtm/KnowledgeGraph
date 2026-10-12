@@ -145,3 +145,12 @@ def test_upload_rejects_unsupported_files(client, tokens):
                        headers=admin)
     assert fake.status_code == 201 and fake.json()["outcome"] == "rejected"
     client.delete(f"/api/documents/{fake.json()['doc_id']}", headers=admin)
+
+
+def test_document_detail_hides_internal_fields(client, tokens):
+    doc_id = document_id_for("PRC-KYC-001_v2.0_entree_en_relation_connaissance_client.docx")
+    detail = client.get(f"/api/documents/{doc_id}", headers=tokens["admin"]).json()
+    assert "source_path" not in detail and "minhash" not in detail
+    assert isinstance(detail["issues"], list)
+    listing = client.get("/api/documents", headers=tokens["admin"]).json()
+    assert all(isinstance(d["issues"], list) for d in listing)

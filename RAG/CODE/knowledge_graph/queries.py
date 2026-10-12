@@ -10,6 +10,7 @@ Règle de visibilité appliquée partout :
 
 from __future__ import annotations
 
+import json
 import re
 
 from core.ontology import ENTITY_TYPES, RELATIONS
@@ -19,6 +20,17 @@ from knowledge_graph.schema import SEMANTIC_RELATIONS
 _VISIBLE_REL = "(r.source = 'referential' OR any(d IN coalesce(r.source_doc_ids, []) WHERE d IN $allowed))"
 _VISIBLE_ENTITY = ("(e:Domain OR EXISTS { MATCH (c:Chunk)-[:MENTIONS]->(e) WHERE c.doc_id IN $allowed } "
                    "OR EXISTS { MATCH (d:Document)-[:DESCRIBES]->(e) WHERE d.id IN $allowed })")
+
+
+def _parse_issues(raw) -> list[dict]:
+    """Les anomalies qualité sont stockées en JSON dans une propriété du nœud Document."""
+    if not raw:
+        return []
+    try:
+        value = json.loads(raw) if isinstance(raw, str) else raw
+    except ValueError:
+        return []
+    return value if isinstance(value, list) else []
 
 
 class GraphQueries:
@@ -176,7 +188,8 @@ class GraphQueries:
                           d.ocr_used AS ocr_used, d.quality_score AS quality_score, d.issues AS issues,
                           count(c) AS chunks
                    ORDER BY d.title"""
-        return self.client.read(query, allowed=allowed, hidden=include_hidden)
+        return [{**row, "issues": _parse_issues(row["issues"])}
+                for row in self.client.read(query, allowed=allowed, hidden=include_hidden)]
 
     def document(self, doc_id: str, allowed: list[str], include_hidden: bool = False) -> dict | None:
         if doc_id not in allowed and not include_hidden:
@@ -189,12 +202,16 @@ class GraphQueries:
                OPTIONAL MATCH (d)<-[:PART_OF]-(:Chunk)-[:MENTIONS]->(e:Entity)
                WITH d, chunks, collect(DISTINCT e {.id, .name, .type}) AS entities
                OPTIONAL MATCH (d)-[:DESCRIBES]->(x:Entity)
-               RETURN d {.*, doc_date: toString(d.doc_date), minhash: null} AS document, chunks, entities,
+               RETURN d {.*, doc_date: toString(d.doc_date), minhash: null, source_path: null} AS document,
+                      chunks, entities,
                       collect(DISTINCT x {.id, .name, .type}) AS describes""", id=doc_id)
         if not rows:
             return None
         row = rows[0]
-        return {**row["document"], "chunks": row["chunks"], "entities": row["entities"], "describes": row["describes"]}
+        # Champs internes jamais exposés : chemin du fichier sur le serveur, signature MinHash.
+        document = {k: v for k, v in row["document"].items() if k not in ("source_path", "minhash")}
+        document["issues"] = _parse_issues(document.get("issues"))
+        return {**document, "chunks": row["chunks"], "entities": row["entities"], "describes": row["describes"]}
 
     def ingestion_runs(self, limit: int = 20) -> list[dict]:
         return self.client.read(
