@@ -1,0 +1,18 @@
+.documents-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 0; }
+.documents-meta div { display: grid; gap: 1px; }
+.documents-meta dt { font-size: 0.78rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.03em; }
+.documents-meta dd { margin: 0; overflow-wrap: anywhere; }
+.documents-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.documents-chip { display: inline-flex; align-items: center; gap: 6px; }
+.documents-issues { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; font-size: 0.9rem; }
+.documents-chunks { margin: 10px 0 0; padding-left: 1.3em; display: grid; gap: 12px; }
+.documents-chunk-text { white-space: pre-wrap; font-size: 0.9rem; color: var(--ink-2); }
+.documents-title-btn {
+  all: unset; cursor: pointer; font-weight: 600; color: var(--ink); text-align: left;
+}
+.documents-title-btn:hover { color: var(--accent); }
+.documents-title-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+tr.documents-selected td { background: var(--accent-soft); }
+.nowrap { white-space: nowrap; }
+.documents-danger { border-top: 1px solid var(--border); padding-top: 12px; }
+@media (max-width: 700px) { .documents-meta { grid-template-columns: 1fr; } }

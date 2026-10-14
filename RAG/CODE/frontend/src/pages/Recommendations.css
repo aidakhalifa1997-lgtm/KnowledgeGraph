@@ -1,0 +1,81 @@
+/* Recommandations : toutes les classes sont préfixées « recommendations- ». */
+
+.recommendations { display: grid; gap: 20px; }
+.recommendations h2 { margin: 0; }
+
+/* Onglets : l'onglet actif est signalé par sa graisse et un trait, pas seulement par la couleur. */
+.recommendations-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+.recommendations-tab {
+  appearance: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; background: none;
+  font: inherit; color: var(--ink-2); cursor: pointer; padding: 10px 14px; min-height: 44px; text-align: left;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.recommendations-tab:hover { color: var(--ink); background: var(--surface-2); }
+.recommendations-tab[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
+
+.recommendations-panel { display: grid; gap: 20px; }
+/* « display: grid » l'emporterait sur l'attribut « hidden » sans cette règle. */
+.recommendations-panel[hidden] { display: none; }
+
+.recommendations-form { display: grid; gap: 16px; }
+.recommendations-hint { margin: 0; font-size: 0.82rem; color: var(--ink-3); }
+.recommendations-error { margin: 0; font-size: 0.85rem; color: var(--bad); font-weight: 600; }
+.recommendations-examples { display: grid; gap: 8px; }
+
+/* Choix de la méthode de calcul */
+.recommendations-modes { border: 0; margin: 0; padding: 0; min-width: 0; }
+.recommendations-modes legend { padding: 0; margin-bottom: 8px; font-size: 0.88rem; color: var(--ink-2); }
+.recommendations-mode-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.recommendations-mode {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: start;
+  padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--ink); font-size: 0.92rem; cursor: pointer;
+}
+.recommendations-mode:hover { background: var(--surface-2); }
+.recommendations-mode:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.recommendations-mode input { margin: 4px 0 0; accent-color: var(--accent); }
+.recommendations-mode-name { font-weight: 600; }
+.recommendations-mode-detail { grid-column: 2; font-size: 0.82rem; color: var(--ink-2); }
+@media (max-width: 860px) { .recommendations-mode-list { grid-template-columns: 1fr; } }
+
+/* Résultats */
+.recommendations-results { display: grid; gap: 12px; }
+.recommendations-summary { margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
+.recommendations-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.recommendations-list > .card + .card { margin-top: 0; }
+
+.recommendations-item { display: grid; gap: 14px; }
+.recommendations-item-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.recommendations-rank { font-family: var(--font-serif); font-size: 1.35rem; line-height: 1.25; color: var(--ink-3); min-width: 1.4ch; }
+.recommendations-item-main { display: grid; gap: 6px; min-width: 0; }
+.recommendations-item h3 { margin: 0; font-size: 1.02rem; }
+.recommendations-link {
+  appearance: none; border: 0; background: none; padding: 0; font: inherit; color: var(--accent);
+  text-align: left; cursor: pointer; overflow-wrap: anywhere;
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
+}
+.recommendations-link:hover { text-decoration-thickness: 2px; }
+.recommendations-reference { color: var(--ink-3); align-self: center; }
+.recommendations-note { margin: 0; font-size: 0.85rem; color: var(--warn); font-weight: 600; }
+.recommendations-score { display: grid; justify-items: end; text-align: right; }
+.recommendations-score-value { font-family: var(--font-serif); font-size: 1.6rem; line-height: 1.1; }
+
+.recommendations-components { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 18px; }
+.recommendations-components > div { display: grid; gap: 4px; min-width: 0; }
+.recommendations-components dt { font-size: 0.8rem; color: var(--ink-3); }
+.recommendations-components dd { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) 5ch; gap: 8px; align-items: center; }
+.recommendations-component-value { font-size: 0.85rem; font-variant-numeric: tabular-nums; text-align: right; }
+
+.recommendations-reasons h4 { margin: 0 0 4px; font-size: 0.88rem; font-weight: 600; }
+.recommendations-reasons ul { margin: 0; padding-left: 1.2em; font-size: 0.9rem; color: var(--ink-2); }
+.recommendations-reasons li { margin: 2px 0; overflow-wrap: anywhere; }
+.recommendations-actions { display: flex; justify-content: flex-end; }
+
+@media (max-width: 700px) {
+  .recommendations-components { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .recommendations-item-head { grid-template-columns: auto minmax(0, 1fr); }
+  .recommendations-score { grid-column: 2; justify-items: start; text-align: left; grid-auto-flow: column; gap: 8px; align-items: baseline; justify-content: start; }
+  .recommendations-actions { justify-content: flex-start; }
+}

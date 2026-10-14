@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Schémas du mémoire</title>
+<style>
+  body { margin: 0; background: #ffffff; font-family: "Carlito", "Calibri", "Liberation Sans", sans-serif; }
+  svg { display: block; margin: 0 0 40px; background: #ffffff; }
+  text { fill: #1d1d1b; }
+</style>
+</head>
+<body>
+<svg id="schema_architecture" width="1600" height="1060"></svg>
+<svg id="schema_pipeline_ingestion" width="1600" height="640"></svg>
+<svg id="schema_modele_graphe" width="1600" height="900"></svg>
+<svg id="schema_workflow" width="1600" height="760"></svg>
+<svg id="schema_deploiement" width="1600" height="760"></svg>
+<script>
+// Petit outil de dessin : boîtes, flèches, étiquettes. Couleurs sobres pour l'impression.
+const NS = "http://www.w3.org/2000/svg";
+const C = {
+  ink: "#1d1d1b", muted: "#5a5a55", line: "#4a4a46", accent: "#1F3A5F",
+  blue: "#e3ecf7", blueS: "#2a78d6", orange: "#fde9df", orangeS: "#c9541f", green: "#e2f4ec", greenS: "#178a60",
+  yellow: "#fdf3d6", yellowS: "#b07d00", violet: "#ece9fb", violetS: "#5546c4", gray: "#f1f0ec", grayS: "#8a857a",
+  red: "#fbe3e2", redS: "#b23a37", white: "#ffffff",
+};
+function el(svg, name, attrs, text) {
+  const e = document.createElementNS(NS, name);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  svg.appendChild(e);
+  return e;
+}
+function defs(svg) {
+  const d = el(svg, "defs", {});
+  for (const [id, color] of [["arr", C.line], ["arrA", C.accent], ["arrR", C.redS], ["arrG", C.greenS]]) {
+    const m = document.createElementNS(NS, "marker");
+    Object.entries({ id: svg.id + id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 8, markerHeight: 8, orient: "auto-start-reverse" })
+      .forEach(([k, v]) => m.setAttribute(k, v));
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", "M0,0 L10,5 L0,10 z"); p.setAttribute("fill", color);
+    m.appendChild(p); d.appendChild(m);
+  }
+}
+function box(svg, x, y, w, h, title, lines = [], o = {}) {
+  el(svg, "rect", { x, y, width: w, height: h, rx: o.rx ?? 10, fill: o.fill ?? C.white, stroke: o.stroke ?? C.line,
+    "stroke-width": o.sw ?? 1.6, "stroke-dasharray": o.dash ?? "none" });
+  const cx = x + w / 2;
+  let ty = y + (o.titleTop ?? (lines.length ? 30 : h / 2 + 7));
+  el(svg, "text", { x: o.left ? x + 16 : cx, y: ty, "text-anchor": o.left ? "start" : "middle", "font-size": o.fs ?? 20,
+    "font-weight": 700, fill: o.titleColor ?? C.ink }, title);
+  lines.forEach((l, i) => el(svg, "text", { x: o.left ? x + 16 : cx, y: ty + 26 + i * (o.lh ?? 22), "text-anchor": o.left ? "start" : "middle",
+    "font-size": o.lfs ?? 16, fill: C.muted }, l));
+}
+function arrow(svg, x1, y1, x2, y2, label, o = {}) {
+  const color = o.color ?? C.line;
+  const marker = o.marker ?? "arr";
+  el(svg, o.path ? "path" : "line", o.path ? { d: o.path, fill: "none", stroke: color, "stroke-width": o.sw ?? 2,
+    "stroke-dasharray": o.dash ?? "none", "marker-end": `url(#${svg.id}${marker})` }
+    : { x1, y1, x2, y2, stroke: color, "stroke-width": o.sw ?? 2, "stroke-dasharray": o.dash ?? "none",
+      "marker-end": `url(#${svg.id}${marker})`, ...(o.both ? { "marker-start": `url(#${svg.id}${marker})` } : {}) });
+  if (label) {
+    const lx = o.lx ?? (x1 + x2) / 2, ly = o.ly ?? (y1 + y2) / 2 - 8;
+    const t = el(svg, "text", { x: lx, y: ly, "text-anchor": o.anchor ?? "middle", "font-size": o.fs ?? 15, fill: o.lcolor ?? C.muted,
+      "font-style": "italic" }, label);
+    const b = t.getBBox();
+    const bg = el(svg, "rect", { x: b.x - 4, y: b.y - 2, width: b.width + 8, height: b.height + 4, fill: C.white, opacity: 0.92 });
+    svg.insertBefore(bg, t);
+  }
+}
+function title(svg, text, sub) {
+  el(svg, "text", { x: 30, y: 42, "font-size": 26, "font-weight": 700, fill: C.accent }, text);
+  if (sub) el(svg, "text", { x: 30, y: 70, "font-size": 16, fill: C.muted }, sub);
+}
+function band(svg, y, h, label, fill) {
+  el(svg, "rect", { x: 20, y, width: 1560, height: h, rx: 14, fill, stroke: "none" });
+  el(svg, "text", { x: 1562, y: y + 24, "text-anchor": "end", "font-size": 14, "font-weight": 700, fill: C.muted, "letter-spacing": "0.06em" }, label.toUpperCase());
+}
+
+// ------------------------------------------------------------------ 1. Architecture en couches
+(() => {
+  const s = document.getElementById("schema_architecture"); defs(s);
+  title(s, "Architecture de la plateforme", "Couches logicielles et flux principaux (les flèches pleines suivent une question, les flèches pointillées l'ingestion)");
+  band(s, 92, 120, "Présentation", "#f6f8fb");
+  box(s, 60, 122, 1100, 82, "Interface React exécutée dans le navigateur (Vite, TypeScript, Cytoscape)", ["Accueil · Assistant · Explorateur du graphe · Experts · Recommandations · Documents"], { fill: C.blue, stroke: C.blueS });
+  box(s, 1250, 122, 300, 82, "nginx", ["fichiers statiques, CSP, relais /api"], { fill: C.gray });
+  arrow(s, 1160, 163, 1246, 163, "HTTPS", { ly: 150 });
+
+  band(s, 228, 150, "API et sécurité", "#f6f8fb");
+  box(s, 60, 268, 1490, 92, "API FastAPI", ["authentification JWT · rôles viewer < manager < admin · limitation de débit · validation Pydantic · en-têtes de sécurité · journaux JSON sans secrets"], { fill: C.white, stroke: C.accent, sw: 2 });
+  arrow(s, 1400, 204, 1400, 264, "relais /api", { lx: 1300, ly: 240 });
+
+  band(s, 394, 210, "Services métier", "#f6f8fb");
+  box(s, 60, 436, 420, 150, "Workflow de questions-réponses", ["LangGraph : analyse, recherche,", "contrôle de suffisance, relance,", "génération, vérification, abstention"], { fill: C.violet, stroke: C.violetS });
+  box(s, 520, 436, 300, 150, "Recherche d'experts", ["preuves typées pondérées,", "récence, justification,", "baseline « mentions »"], { fill: C.white });
+  box(s, 860, 436, 300, 150, "Recommandations", ["contenu + entités partagées", "+ proximité dans le graphe,", "raisons explicites"], { fill: C.white });
+  box(s, 1200, 436, 350, 150, "Exploration et documents", ["recherche d'entités, voisinage,", "catalogue, téléversement,", "suppression (administrateur)"], { fill: C.white });
+  arrow(s, 270, 360, 270, 432); arrow(s, 670, 360, 670, 432); arrow(s, 1010, 360, 1010, 432); arrow(s, 1375, 360, 1375, 432);
+
+  band(s, 620, 190, "Récupération de l'information", "#f6f8fb");
+  box(s, 60, 662, 330, 120, "Contrôle d'accès", ["documents autorisés calculés", "AVANT toute recherche", "(groupes de diffusion)"], { fill: C.red, stroke: C.redS });
+  box(s, 430, 662, 250, 120, "BM25", ["index plein texte Lucene", "(analyseur français)"], { fill: C.yellow, stroke: C.yellowS });
+  box(s, 710, 662, 250, 120, "Vecteurs", ["index HNSW cosinus", "(WordLlama 256 d)"], { fill: C.yellow, stroke: C.yellowS });
+  box(s, 990, 662, 270, 120, "Graphe", ["ancrage d'entités, ≤ 2 sauts,", "PageRank personnalisé"], { fill: C.yellow, stroke: C.yellowS });
+  box(s, 1290, 662, 260, 120, "Fusion RRF", ["k = 60, routage par type", "+ garantie par source"], { fill: C.yellow, stroke: C.yellowS });
+  el(s, "text", { x: 520, y: 600, "font-size": 14, "font-style": "italic", fill: C.muted },
+    "Experts, recommandations et exploration interrogent directement Neo4j, avec le même filtre des documents autorisés.");
+  arrow(s, 270, 586, 270, 658);
+  arrow(s, 390, 722, 426, 722); arrow(s, 680, 722, 706, 722); arrow(s, 960, 722, 986, 722); arrow(s, 1260, 722, 1286, 722);
+
+  band(s, 826, 210, "Données et ingestion", "#f6f8fb");
+  box(s, 60, 866, 640, 150, "Pipeline d'ingestion", ["validation et sécurité → texte / OCR Tesseract → nettoyage et", "cartouche → qualité → dédoublonnage (SHA-256, MinHash) →", "découpage → entités et relations (règles, LLM optionnel) →", "encodage → écriture idempotente avec provenance"], { fill: C.green, stroke: C.greenS, left: true });
+  box(s, 760, 866, 450, 150, "Neo4j 5.26 Community", ["graphe : Document, Chunk, entités,", "relations avec preuves (provenance)", "index plein texte + index vectoriel"], { fill: C.blue, stroke: C.blueS, sw: 2.2 });
+  box(s, 1250, 866, 300, 150, "LLM externe (optionnel)", ["désactivé par défaut :", "mode hors-ligne extractif", "OpenAI-compatible / Anthropic"], { fill: C.white, dash: "7 5" });
+  arrow(s, 700, 940, 756, 940, "", { dash: "6 5" });
+  arrow(s, 985, 782, 985, 862, "lectures Cypher paramétrées", { lx: 1110, ly: 828 });
+  arrow(s, 1250, 940, 1214, 940, "", { dash: "6 5" });
+})();
+
+// ------------------------------------------------------------------ 2. Pipeline d'ingestion
+(() => {
+  const s = document.getElementById("schema_pipeline_ingestion"); defs(s);
+  title(s, "Pipeline d'ingestion d'un document", "Chaque étape peut arrêter le traitement ; le résultat est tracé dans le rapport d'ingestion");
+  const steps = [
+    ["Empreinte", ["SHA-256 du", "fichier"]], ["Validation", ["extension, signature,", "taille, pages, zip"]],
+    ["Texte", ["PyMuPDF, python-docx,", "TXT ; OCR si scan"]], ["Nettoyage", ["en-têtes répétés,", "lignes, puces"]],
+    ["Cartouche", ["référence, version,", "date, diffusion"]], ["Qualité", ["texte suffisant,", "injection de prompt"]],
+    ["Doublons", ["exact (SHA-256)", "proche (MinHash)"]], ["Découpage", ["sections, passages", "contextualisés"]],
+    ["Extraction", ["mentions, relations,", "résolution d'entités"]], ["Écriture", ["encodage, Neo4j,", "provenance"]],
+  ];
+  const w = 138, gap = 18, y = 150;
+  steps.forEach(([t, l], i) => {
+    const x = 30 + i * (w + gap);
+    box(s, x, y, w, 110, t, l, { fill: i < 2 ? C.gray : i < 6 ? C.blue : i < 9 ? C.violet : C.green, fs: 17, lfs: 13, lh: 18, stroke: C.line });
+    if (i < steps.length - 1) arrow(s, x + w, y + 55, x + w + gap - 2, y + 55);
+  });
+  const out = (i, label, color, fill, yy) => {
+    const x = 30 + i * (w + gap) + w / 2;
+    arrow(s, x, y + 110, x, yy - 4, "", { color, marker: color === C.redS ? "arrR" : "arr" });
+    box(s, x - 85, yy, 170, 64, label[0], [label[1]], { fill, stroke: color, fs: 16, lfs: 13 });
+  };
+  out(0, ["Inchangé", "même empreinte : ignoré"], C.grayS, C.gray, 330);
+  out(1, ["Rejeté", "fichier non conforme"], C.redS, C.red, 420);
+  out(5, ["Quarantaine", "instructions suspectes"], C.redS, C.red, 330);
+  out(6, ["Doublon", "non indexé (ou reclassé)"], C.orangeS, C.orange, 420);
+  box(s, 1090, 330, 480, 140, "Finalisation (après le lot)", ["versions : relation SUPERSEDES, statut « remplacé »", "taxonomie des domaines, relations COVERS", "documents similaires (SIMILAR_TO), nettoyage", "des entités orphelines, journal IngestionRun"], { fill: C.green, stroke: C.greenS, left: true, lfs: 15 });
+  arrow(s, 30 + 9 * (w + gap) + w / 2, y + 110, 1330, 326, "", { color: C.greenS, marker: "arrG" });
+  el(s, "text", { x: 30, y: 560, "font-size": 15, fill: C.muted },
+    "Idempotence : un fichier inchangé n'est pas retraité ; un fichier modifié remplace intégralement ses passages et ses preuves ;");
+  el(s, "text", { x: 30, y: 584, "font-size": 15, fill: C.muted },
+    "un fichier supprimé du répertoire est retiré du graphe, et seules ses preuves disparaissent des relations partagées avec d'autres documents.");
+})();
+
+// ------------------------------------------------------------------ 3. Modèle du graphe
+(() => {
+  const s = document.getElementById("schema_modele_graphe"); defs(s);
+  title(s, "Modèle de données du graphe de connaissances", "Couche documentaire (gauche), couche sémantique (droite) et provenance portée par chaque relation extraite");
+  const node = (x, y, label, sub, fill, stroke, r = 62) => {
+    el(s, "ellipse", { cx: x, cy: y, rx: r + 28, ry: r * 0.62, fill, stroke, "stroke-width": 2 });
+    el(s, "text", { x, y: y + (sub ? -2 : 6), "text-anchor": "middle", "font-size": 19, "font-weight": 700 }, label);
+    if (sub) el(s, "text", { x, y: y + 20, "text-anchor": "middle", "font-size": 13, fill: C.muted }, sub);
+  };
+  // couche documentaire
+  node(170, 200, "Document", "référence, version, statut", C.gray, C.grayS);
+  node(170, 470, "Chunk", "passage + vecteur", C.gray, C.grayS);
+  node(470, 120, "Document", "version antérieure", C.gray, C.grayS, 52);
+  arrow(s, 238, 175, 400, 132, "SUPERSEDES", { color: C.line });
+  arrow(s, 170, 430, 170, 244, "PART_OF", { lx: 120 });
+  el(s, "path", { d: "M 110 506 C 60 600, 280 600, 230 506", fill: "none", stroke: C.line, "stroke-width": 2, "marker-end": `url(#${s.id}arr)` });
+  el(s, "text", { x: 170, y: 600, "text-anchor": "middle", "font-size": 15, "font-style": "italic", fill: C.muted }, "NEXT (ordre de lecture)");
+  // couche sémantique (grille : aucune relation ne traverse un nœud)
+  const E = { Person: [760, 190], Department: [1120, 190], Domain: [1460, 190], Project: [760, 450], Procedure: [1120, 450],
+    Concept: [1460, 450], System: [1120, 690] };
+  const colors = { Person: [C.blue, C.blueS], Department: [C.orange, C.orangeS], Project: [C.yellow, C.yellowS], Procedure: ["#fbe6ef", "#c0507c"],
+    System: [C.green, C.greenS], Concept: [C.violet, C.violetS], Domain: ["#e4f2e4", "#2e7d32"] };
+  const rel = (a, b, label, o = {}) => {
+    const [x1, y1] = E[a], [x2, y2] = E[b];
+    const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
+    arrow(s, x1 + (dx / d) * 92, y1 + (dy / d) * 40, x2 - (dx / d) * 96, y2 - (dy / d) * 42, label, { color: C.accent, marker: "arrA", lcolor: C.accent, ...o });
+  };
+  rel("Person", "Department", "WORKS_IN");
+  rel("Person", "Project", "PARTICIPATES_IN (rôle)", { lx: 700, ly: 320 });
+  rel("Person", "Procedure", "RESPONSIBLE_FOR", { lx: 975, ly: 300 });
+  rel("Department", "Procedure", "OWNS", { lx: 1160, ly: 320, anchor: "start" });
+  rel("Project", "Procedure", "IMPACTS", { ly: 438 });
+  rel("Project", "System", "DELIVERS · DEPENDS_ON", { lx: 870, ly: 600 });
+  rel("Procedure", "System", "USES", { lx: 1160, ly: 575, anchor: "start" });
+  rel("Procedure", "Concept", "COVERS", { ly: 438 });
+  rel("Concept", "Domain", "BELONGS_TO", { lx: 1500, ly: 320, anchor: "start" });
+  arrow(s, 0, 0, 0, 0, "HAS_EXPERTISE", { path: "M 790 150 C 900 60, 1330 60, 1420 150", color: C.accent, marker: "arrA", lcolor: C.accent, lx: 1110, ly: 82 });
+  el(s, "path", { d: "M 1212 168 C 1300 110, 1310 270, 1214 214", fill: "none", stroke: C.accent, "stroke-width": 2, "marker-end": `url(#${s.id}arrA)` });
+  el(s, "text", { x: 1290, y: 196, "text-anchor": "start", "font-size": 15, "font-style": "italic", fill: C.accent }, "PART_OF");
+  Object.entries(E).forEach(([k, [x, y]]) => node(x, y, k, "", colors[k][0], colors[k][1], 52));
+  // liens document -> entités et entre documents
+  node(470, 300, "Document", "autre document", C.gray, C.grayS, 46);
+  arrow(s, 230, 238, 410, 285, "", { dash: "5 4" });
+  el(s, "text", { x: 240, y: 318, "text-anchor": "middle", "font-size": 14, "font-style": "italic", fill: C.muted }, "SIMILAR_TO · DUPLICATE_OF");
+  arrow(s, 262, 470, 662, 455, "MENTIONS (toute entité)", { color: C.line, ly: 450 });
+  arrow(s, 262, 196, 662, 190, "AUTHORED_BY · ISSUED_BY · DESCRIBES", { color: C.line, dash: "6 4", ly: 180 });
+  // provenance
+  box(s, 40, 690, 560, 180, "Provenance d'une relation extraite", ["source_doc_ids : documents qui la justifient", "evidence_chunk_ids / evidence_quotes : passages et citations", "evidence_extractors : règles et/ou LLM ; confidence", "Visible pour un utilisateur seulement si un de ses", "documents sources lui est autorisé"], { fill: C.white, stroke: C.accent, left: true, lfs: 15, sw: 2 });
+  el(s, "text", { x: 640, y: 860, "font-size": 14, fill: C.muted }, "Non représentée : REFERENCES (procédure → procédure). IMPACTS vise aussi une application.");
+})();
+
+// ------------------------------------------------------------------ 4. Workflow LangGraph
+(() => {
+  const s = document.getElementById("schema_workflow"); defs(s);
+  title(s, "Workflow de questions-réponses (LangGraph)", "Graphe d'états déterministe : aucune décision de routage n'est laissée au LLM");
+  const N = (x, y, w, t, l, fill, stroke) => box(s, x, y, w, 120, t, l, { fill, stroke, fs: 20, lfs: 14, lh: 19 });
+  el(s, "circle", { cx: 70, cy: 250, r: 22, fill: C.accent }); el(s, "text", { x: 70, y: 300, "text-anchor": "middle", "font-size": 15, fill: C.muted }, "début");
+  N(130, 190, 250, "analyze", ["entités de la question, type,", "stratégie, documents autorisés"], C.blue, C.blueS);
+  N(450, 190, 250, "retrieve", ["BM25 + vecteurs + graphe,", "fusion RRF, top 8 passages"], C.yellow, C.yellowS);
+  N(770, 190, 260, "assess", ["suffisance (seuil 0,55),", "conflits, experts éventuels"], C.violet, C.violetS);
+  N(1120, 90, 210, "generate", ["extractif hors-ligne", "ou LLM (repli)"], C.green, C.greenS);
+  N(1120, 400, 210, "abstain", ["refus motivé :", "éléments manquants"], C.red, C.redS);
+  N(1380, 90, 190, "verify", ["citations, appui,", "assainissement"], C.green, C.greenS);
+  N(770, 470, 260, "expand", ["graines et termes enrichis,", "2 sauts, une seule fois"], C.orange, C.orangeS);
+  arrow(s, 92, 250, 126, 250);
+  arrow(s, 380, 250, 446, 250); arrow(s, 700, 250, 766, 250);
+  arrow(s, 1030, 225, 1116, 160, "suffisant", { lx: 1060, ly: 175 });
+  arrow(s, 1030, 280, 1116, 440, "insuffisant après relance", { lx: 1010, ly: 380, anchor: "start" });
+  arrow(s, 900, 310, 900, 466, "insuffisant (1er essai)", { lx: 960, ly: 395, anchor: "start" });
+  arrow(s, 770, 530, 575, 314, "relance", { path: "M 770 530 C 600 530, 575 420, 575 314", lx: 640, ly: 520 });
+  arrow(s, 1330, 150, 1376, 150);
+  el(s, "circle", { cx: 1475, cy: 300, r: 22, fill: C.accent }); el(s, "circle", { cx: 1475, cy: 300, r: 12, fill: C.white });
+  el(s, "text", { x: 1475, y: 350, "text-anchor": "middle", "font-size": 15, fill: C.muted }, "fin");
+  arrow(s, 1475, 210, 1475, 274);
+  arrow(s, 1330, 460, 1453, 316);
+  box(s, 40, 640, 1530, 90, "État partagé (QAState, typé) et trace", ["question, droits, route, graines, passages, faits, suffisance, conflits, réponse, rapport de vérification ;", "chaque nœud ajoute sa durée et ses décisions à la trace renvoyée avec la réponse (auditabilité)"], { fill: C.gray, left: true, lfs: 15 });
+})();
+
+// ------------------------------------------------------------------ 5. Déploiement
+(() => {
+  const s = document.getElementById("schema_deploiement"); defs(s);
+  title(s, "Déploiement avec Docker Compose", "Configuration locale testée ; la surcharge de production ajoute Caddy (TLS) — aucun déploiement distant n'a été réalisé");
+  box(s, 40, 130, 220, 90, "Utilisateur", ["navigateur"], { fill: C.gray });
+  box(s, 330, 110, 300, 130, "Caddy (production)", ["TLS automatique, HSTS,", "ports 80/443"], { fill: C.white, dash: "7 5" });
+  el(s, "rect", { x: 690, y: 95, width: 880, height: 470, rx: 16, fill: "#f7f9fc", stroke: C.accent, "stroke-width": 1.6, "stroke-dasharray": "4 4" });
+  el(s, "text", { x: 710, y: 125, "font-size": 15, "font-weight": 700, fill: C.accent }, "réseau interne Compose");
+  box(s, 730, 145, 360, 150, "frontend (nginx non privilégié)", ["port 8080 (127.0.0.1 en local)", "CSP stricte, relais /api", "lecture seule, sans capacités"], { fill: C.blue, stroke: C.blueS });
+  box(s, 1160, 145, 380, 150, "backend (FastAPI)", ["Ubuntu 24.04, Python 3.12, Tesseract", "utilisateur non privilégié, lecture seule,", "/tmp en mémoire, sonde /api/health"], { fill: C.violet, stroke: C.violetS });
+  box(s, 1160, 360, 380, 150, "neo4j 5.26 Community", ["aucun port publié", "sonde de santé HTTP", "dump à froid pour la sauvegarde"], { fill: C.green, stroke: C.greenS });
+  box(s, 730, 360, 360, 150, "Volumes nommés", ["neo4j_data, neo4j_logs", "uploads (fichiers téléversés)", "./backups (dumps + SHA-256)"], { fill: C.yellow, stroke: C.yellowS });
+  arrow(s, 260, 175, 326, 175);
+  arrow(s, 630, 175, 726, 200);
+  arrow(s, 1090, 220, 1156, 220, "/api");
+  arrow(s, 1350, 295, 1350, 356, "Bolt 7687", { lx: 1410 });
+  arrow(s, 1156, 435, 1094, 435, "", { both: true, dash: "5 4" });
+  box(s, 40, 600, 740, 130, "Secrets et configuration", ["fichier .env non versionné (droits 600), généré avec des secrets aléatoires", "mot de passe Neo4j, clé de signature des jetons, clé LLM éventuelle", "jamais dans le code, les journaux ni les images"], { fill: C.red, stroke: C.redS, left: true, lfs: 15 });
+  box(s, 830, 600, 740, 130, "Exploitation", ["make up / ingest / backup / restore ; sondes de santé et dépendances", "sauvegarde → suppression → restauration testée (315 nœuds restaurés)", "CI : lint, tests, compilation, audit des dépendances, secrets"], { fill: C.gray, left: true, lfs: 15 });
+})();
+</script>
+</body>
+</html>

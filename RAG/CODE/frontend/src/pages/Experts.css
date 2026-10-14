@@ -1,0 +1,58 @@
+/* Recherche d'experts : toutes les classes propres à la page sont préfixées « experts- ». */
+
+.experts .card-title { flex-wrap: wrap; }
+.experts .card-title > h2 { margin: 0; }
+
+/* ------------------------------------------------------------------ choix du domaine */
+.experts-form-error { color: var(--bad); font-size: 0.88rem; font-weight: 600; margin: 8px 0 0; }
+.experts-subtitle { margin: 20px 0 4px; }
+.experts-domains { list-style: none; margin: 0; padding: 0; }
+.experts .experts-chip { display: inline-flex; align-items: center; gap: 6px; }
+.experts .experts-chip[aria-pressed="true"] {
+  border-color: var(--accent); background: var(--accent-soft); color: var(--ink); font-weight: 600;
+}
+.experts-chip-count {
+  font-size: 0.75rem; font-weight: 700; min-width: 1.5em; padding: 0 6px; border-radius: 999px;
+  background: var(--surface-2); color: var(--ink-2); text-align: center; font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ résultats */
+.experts-results { margin-top: 16px; }
+.experts-limits { margin-bottom: 14px; font-size: 0.95rem; }
+.experts-limits p { margin: 0; }
+.experts-limits-title { font-weight: 700; }
+.experts-note { margin: 0 0 10px; }
+.experts-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.experts .experts-card { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); gap: 12px; padding: 14px 16px; }
+.experts-rank {
+  width: 2.25rem; height: 2.25rem; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-serif); font-size: 1.1rem; background: var(--surface-2); border: 1px solid var(--border-strong);
+}
+.experts-body { display: grid; gap: 8px; min-width: 0; }
+.experts-body p { margin: 0; }
+.experts-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.experts-head h3 { margin: 0; font-size: 1.08rem; }
+.experts-score { display: grid; grid-template-columns: minmax(0, 16rem) auto; align-items: center; gap: 10px; }
+.experts-score .meter { height: 8px; }
+.experts-label { font-weight: 600; color: var(--ink-2); }
+
+/* ------------------------------------------------------------------ preuves */
+.experts-evidence > summary { cursor: pointer; color: var(--ink-2); font-size: 0.9rem; font-weight: 500; }
+.experts-evidence[open] > summary { margin-bottom: 6px; }
+.experts-evidence-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.experts-evidence-item { border-top: 1px solid var(--border); padding-top: 10px; display: grid; gap: 4px; }
+.experts-evidence-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 10px; }
+.experts-evidence-label { font-weight: 600; font-size: 0.9rem; overflow-wrap: anywhere; }
+.experts-doc {
+  all: unset; cursor: pointer; color: var(--accent); text-decoration: underline; text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+.experts-doc:hover { color: var(--ink); }
+.experts-doc:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+.experts .experts-quote { margin: 2px 0 0; padding-left: 10px; border-left: 3px solid var(--border-strong); overflow-wrap: anywhere; }
+
+@media (max-width: 480px) {
+  .experts .experts-card { grid-template-columns: 1.75rem minmax(0, 1fr); gap: 10px; padding: 12px; }
+  .experts-rank { width: 1.75rem; height: 1.75rem; font-size: 0.95rem; }
+  .experts-score { grid-template-columns: minmax(0, 1fr) auto; }
+}

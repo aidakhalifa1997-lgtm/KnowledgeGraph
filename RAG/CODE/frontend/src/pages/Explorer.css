@@ -1,0 +1,74 @@
+/* Explorateur du graphe : toutes les classes sont préfixées « explorer- ». */
+
+.explorer { display: grid; gap: 20px; }
+/* Les cartes juxtaposées ne doivent pas hériter de l'empilement vertical « .card + .card ». */
+.explorer-split > .card + .card { margin-top: 0; }
+.explorer .card-title { flex-wrap: wrap; align-items: center; }
+.explorer .card-title > h2 { margin: 0; }
+.explorer-explain { margin-bottom: 4px; }
+.explorer-summary { min-height: 1.4em; color: var(--ink-2); }
+
+/* Recherche et listes d'entités */
+.explorer-hint { margin: 6px 0 0; }
+.explorer-status { margin: 8px 0 0; }
+.explorer-results { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.explorer-search .explorer-results { max-height: 320px; overflow-y: auto; }
+.explorer-result {
+  appearance: none; width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.explorer-result:hover { border-color: var(--accent); background: var(--surface-2); }
+.explorer-result-name { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.explorer-result-meta { margin-left: auto; font-size: 0.8rem; color: var(--ink-3); }
+
+/* Bouton présenté comme un lien (navigation interne) */
+.explorer-link {
+  appearance: none; border: 0; background: none; padding: 0; font: inherit; color: var(--accent);
+  text-align: left; cursor: pointer; overflow-wrap: anywhere;
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
+}
+.explorer-link:hover { text-decoration-thickness: 2px; }
+
+/* Graphe et vue tabulaire */
+.explorer-depth { display: inline-flex; align-items: center; gap: 8px; }
+.explorer-depth select { width: auto; padding: 4px 10px; }
+.explorer-stage { min-height: 560px; }
+@media (max-width: 700px) { .explorer-stage { min-height: 420px; } }
+.explorer-table { margin-top: 16px; }
+.explorer-table > summary,
+.explorer-evidence > summary { cursor: pointer; font-weight: 600; }
+.explorer-table > summary { font-size: 0.92rem; }
+.explorer-table .table-wrap { margin-top: 8px; }
+.explorer-cell-type { display: block; font-size: 0.78rem; color: var(--ink-3); }
+
+/* Fiche */
+.explorer-kicker {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 0.78rem; font-weight: 600;
+  color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.03em;
+}
+.explorer-panel h2 { overflow-wrap: anywhere; }
+.explorer-facts { margin: 14px 0 0; display: grid; gap: 6px; font-size: 0.9rem; }
+.explorer-facts > div { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: 12px; }
+.explorer-facts dt { color: var(--ink-3); }
+.explorer-facts dd { margin: 0; overflow-wrap: anywhere; }
+.explorer-section { margin-top: 22px; }
+.explorer-section > h3 { margin-bottom: 8px; }
+.explorer-group + .explorer-group { margin-top: 14px; }
+.explorer-group > h4 {
+  margin: 0 0 6px; font-size: 0.78rem; font-weight: 600; color: var(--ink-2);
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.explorer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.explorer-doc { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 0.9rem; }
+.explorer-rel-line { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.explorer-entity { display: inline-flex; align-items: center; gap: 6px; }
+.explorer-rel-badges { margin-top: 6px; }
+.explorer-rel-meta { margin: 4px 0 0; }
+.explorer-evidence { margin-top: 8px; font-size: 0.88rem; }
+.explorer-quotes { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.explorer-quote { margin: 6px 0 0; padding-left: 10px; border-left: 3px solid var(--border-strong); }
+.explorer-sources { margin-top: 10px; }
+.explorer-sources ul { margin: 4px 0 0; padding-left: 1.1em; display: grid; gap: 2px; }
+.explorer-note { margin-top: 12px; }
+.explorer-actions { margin-top: 16px; }

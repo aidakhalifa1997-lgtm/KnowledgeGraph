@@ -1,0 +1,17 @@
+{
+  "title": "Plateforme intelligente de gestion des connaissances fondée sur un Knowledge Graph enrichi par un LLM",
+  "subtitle": "Conception, développement et évaluation expérimentale d'une architecture hybride RAG / GraphRAG pour un contexte bancaire",
+  "running_title": "Knowledge Graph et LLM pour la gestion des connaissances",
+  "document_type": "Mémoire de Projet de Fin d'Études — Master Data Engineering",
+  "institution": "[Nom de l'établissement — à compléter]",
+  "department": "[Département / École — à compléter]",
+  "program": "Master Data Engineering",
+  "author": "[Prénom NOM de l'étudiante — à compléter]",
+  "academic_supervisor": "[Nom de l'encadrant académique — à compléter]",
+  "professional_supervisor": "[Nom de l'encadrant professionnel — à compléter]",
+  "year": "Année universitaire 2025–2026",
+  "notice": "Toutes les données utilisées sont synthétiques : l'organisation « Orizia Banque » et ses documents sont fictifs.",
+  "front_matter": ["memoire/00_test_front.md"],
+  "chapters": ["memoire/01_test_chap.md"],
+  "output_docx": "Memoire_PFE_Knowledge_Graph_LLM.docx"
+}

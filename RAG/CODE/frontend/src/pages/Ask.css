@@ -1,0 +1,78 @@
+/* Assistant : toutes les classes propres à la page sont préfixées « ask- ». */
+
+.ask .card-title { flex-wrap: wrap; }
+.ask .card-title > h2 { margin: 0; }
+.ask details > summary { cursor: pointer; color: var(--ink-2); font-size: 0.9rem; font-weight: 500; }
+.ask details[open] > summary { margin-bottom: 10px; }
+.ask .quote { overflow-wrap: anywhere; margin-bottom: 0; }
+
+/* ------------------------------------------------------------------ formulaire */
+.ask-label { font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+.ask-form-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.ask-count { font-variant-numeric: tabular-nums; }
+.ask-form-error { color: var(--bad); font-size: 0.88rem; font-weight: 600; margin: 0; }
+.ask-options { border-top: 1px solid var(--border); padding-top: 10px; }
+.ask-options select { max-width: 26rem; }
+.ask-options p { margin: 8px 0 0; }
+.ask-result { margin-top: 20px; }
+.ask-pending { display: flex; gap: 10px; align-items: center; margin: 0 0 16px; }
+.ask-pending .spinner { width: 16px; height: 16px; border-width: 2px; flex: none; }
+
+/* ------------------------------------------------------------------ historique */
+.ask-history { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+.ask-history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ask-history-item {
+  appearance: none; width: 100%; text-align: left; font: inherit; color: var(--ink); cursor: pointer;
+  background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 12px; display: grid; gap: 2px;
+}
+.ask-history-item:hover { background: var(--surface-2); }
+.ask-history-item[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); }
+
+/* ------------------------------------------------------------------ exemples */
+.ask-examples { list-style: none; margin: 0 0 4px; padding: 0; }
+.ask-chip-kind { font-weight: 600; color: var(--ink-3); margin-right: 6px; }
+.ask-legend { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.ask-legend .cite { cursor: default; }
+
+/* ------------------------------------------------------------------ réponse */
+.ask-question { font-size: 1.3rem; margin: 12px 0 4px; }
+.ask-route { margin-bottom: 14px; }
+.ask-alerts { margin-bottom: 14px; }
+.ask-alerts .alert p { margin: 4px 0 0; }
+.ask-candidates { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.ask-candidates li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.ask-terms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ask-limits { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+.ask-limits h3 { font-size: 0.85rem; margin-bottom: 4px; color: var(--ink-2); }
+.ask-limits ul { margin: 0; padding-left: 1.2em; }
+
+/* ------------------------------------------------------------------ listes de sources, faits, experts */
+.ask-plain-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ask-plain-list + details, .ask-group-note + details { margin-top: 12px; }
+.ask-item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 8px; }
+.ask-item-title { font-size: 0.95rem; margin: 0; flex: 1 1 12rem; min-width: 0; }
+.ask-meta { font-size: 0.82rem; color: var(--ink-3); margin: 4px 0 0; }
+.ask-item-actions { margin-top: 8px; gap: 6px; }
+.ask-evidence > li { border-left: 2px solid var(--border-strong); padding-left: 10px; }
+.ask-evidence .quote { margin-top: 0; }
+.ask-group-note { margin: 0; }
+.ask-experts { margin-top: 6px; }
+.ask-experts > li { display: grid; gap: 4px; align-content: start; }
+.ask-experts p { margin: 0; }
+
+/* ------------------------------------------------------------------ chemins de raisonnement */
+.ask-chains { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ask-chains > li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; font-size: 0.92rem; }
+.ask-chain-arrow { color: var(--ink-3); padding: 0 2px; }
+
+/* ------------------------------------------------------------------ vérification et déroulé */
+.ask-gauge { display: grid; gap: 4px; margin-bottom: 12px; }
+.ask-gauge-head { display: flex; justify-content: space-between; gap: 10px; font-size: 0.9rem; }
+.ask-dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 12px; }
+.ask-dl dt { font-size: 0.78rem; font-weight: 600; color: var(--ink-3); }
+.ask-dl dd { margin: 2px 0 0; }
+.ask-subtitle { margin: 16px 0 8px; font-size: 0.95rem; }
+.ask-trace { list-style: none; margin: 0; padding: 0; }
+.ask-trace .trace-step > div { display: grid; gap: 2px; min-width: 0; }
+.ask-trace-ms { font-variant-numeric: tabular-nums; white-space: nowrap; }

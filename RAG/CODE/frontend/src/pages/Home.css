@@ -1,0 +1,49 @@
+/* Page d'accueil : toutes les classes sont préfixées « home- ». */
+
+.home { display: grid; gap: 28px; }
+.home-section > h2 { margin-bottom: 4px; }
+.home-lead { color: var(--ink-2); font-size: 0.92rem; max-width: 75ch; }
+.home .card-title { flex-wrap: wrap; }
+.home .card-title > h2,
+.home .card-title > h3 { margin: 0; }
+
+/* Les cartes placées dans une grille ne doivent pas hériter de l'empilement vertical « .card + .card ». */
+.home-cards > .card + .card { margin-top: 0; }
+
+.home-note { font-size: 0.8rem; color: var(--ink-3); margin-top: 4px; }
+
+/* Barres horizontales : libellé, barre proportionnelle, effectif. */
+.home-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.home-bars > li {
+  display: grid; grid-template-columns: minmax(0, 13rem) minmax(48px, 1fr) 4ch;
+  gap: 10px; align-items: center; font-size: 0.9rem;
+}
+.home-bar-label { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.home-bar-count { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) {
+  .home-bars > li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
+  .home-bars .meter { grid-column: 1 / -1; grid-row: 2; }
+}
+
+.home-steps { margin: 0; padding: 0; gap: 10px; }
+.home-steps .trace-step { grid-template-columns: 22px 1fr; font-size: 0.92rem; }
+.home-steps strong { font-weight: 600; }
+
+.home-access { margin: 0; display: grid; gap: 16px; }
+.home-access dt {
+  font-size: 0.78rem; font-weight: 600; color: var(--ink-3); text-transform: uppercase;
+  letter-spacing: 0.03em; margin-bottom: 6px;
+}
+.home-access dd { margin: 0; }
+.home-roles { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.9rem; }
+
+.home-link {
+  appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%;
+  display: grid; gap: 4px; align-content: start;
+}
+.home-link:hover { border-color: var(--accent); }
+.home-link-title { font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.home-link-desc { font-size: 0.86rem; color: var(--ink-2); }
+
+.home .card > :last-child { margin-bottom: 0; }
+.home .examples + .home-note { margin-top: 12px; }
