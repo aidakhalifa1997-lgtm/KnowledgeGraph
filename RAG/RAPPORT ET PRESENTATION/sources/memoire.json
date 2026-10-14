@@ -11,7 +11,21 @@
   "professional_supervisor": "[Nom de l'encadrant professionnel — à compléter]",
   "year": "Année universitaire 2025–2026",
   "notice": "Toutes les données utilisées sont synthétiques : l'organisation « Orizia Banque » et ses documents sont fictifs.",
-  "front_matter": ["memoire/00_test_front.md"],
-  "chapters": ["memoire/01_test_chap.md"],
+  "front_matter": [
+    "memoire/00_liminaires.md"
+  ],
+  "chapters": [
+    "memoire/01_introduction.md",
+    "memoire/02_contexte.md",
+    "memoire/03_etat_art.md",
+    "memoire/04_methodologie.md",
+    "memoire/05_conception.md",
+    "memoire/06_realisation.md",
+    "memoire/07_resultats.md",
+    "memoire/08_gouvernance.md",
+    "memoire/09_conclusion.md",
+    "memoire/10_bibliographie.md",
+    "memoire/11_annexes.md"
+  ],
   "output_docx": "Memoire_PFE_Knowledge_Graph_LLM.docx"
 }
