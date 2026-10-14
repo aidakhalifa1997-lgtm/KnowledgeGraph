@@ -4,7 +4,7 @@
 # Principe (approche « centrée documents », Balog et al., 2006) : l'expertise d'une
 # personne dans un domaine est estimée par l'agrégation de preuves documentaires typées.
 # Les poids traduisent la force probante de chaque type de preuve ; ils sont fixés a
-# priori (jugement métier) et documentés, puis évalués (voir evaluation/expert_eval.py).
+# priori (jugement métier) et documentés, puis évalués (section « experts » de evaluation/run_evaluation.py).
 #
 # Une simple co-mention (personne citée à côté d'un concept du domaine) est
 # volontairement très faible et plafonnée : être mentionné n'est pas être expert.
