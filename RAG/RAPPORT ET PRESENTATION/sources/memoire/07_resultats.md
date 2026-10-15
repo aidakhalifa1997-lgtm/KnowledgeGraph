@@ -60,7 +60,7 @@ La moyenne masque des différences importantes selon le type de question.
 
 ![nDCG@5 par catégorie de question et par stratégie](../figures/fig_recherche_categories.png){width=16cm}
 
-Le graphe seul est la meilleure stratégie sur les questions relationnelles (0,96) et d'expertise (0,98), mais la moins bonne sur les questions factuelles (0,53) et ambiguës (0,37). BM25 domine sur les questions factuelles (0,99) et sur les contradictions. L'architecture finale ne domine nulle part de façon spectaculaire, mais elle n'est mauvaise nulle part : elle atteint 0,99 sur le factuel, 0,87 sur le relationnel, 0,97 sur l'expertise et 0,71 sur le multi-sauts. C'est précisément le rôle attendu du routage : éviter que le graphe ne dégrade les questions simples tout en le mobilisant pour les questions relationnelles. Ces chiffres par catégorie reposent toutefois sur de petits effectifs (de 4 à 13 questions) et doivent être lus comme des tendances.
+Le graphe seul est la meilleure stratégie sur les questions relationnelles (0,96) et l'une des meilleures sur l'expertise (0,97), mais la moins bonne sur les questions factuelles (0,52) et ambiguës (0,37). BM25 domine sur les questions factuelles (0,99) et, à égalité avec le RAG hybride, sur les contradictions (0,92). L'architecture finale ne domine nulle part de façon spectaculaire, mais elle n'est mauvaise nulle part : elle atteint 0,99 sur le factuel, 0,86 sur le relationnel, 0,97 sur l'expertise et 0,71 sur le multi-sauts. C'est précisément le rôle attendu du routage : éviter que le graphe ne dégrade les questions simples tout en le mobilisant pour les questions relationnelles. Ces chiffres par catégorie reposent toutefois sur de petits effectifs (de 4 à 13 questions) et doivent être lus comme des tendances.
 
 ## Questions-réponses de bout en bout
 
@@ -170,9 +170,9 @@ Le gain d'exactitude se concentre sur les questions de développement, où se tr
 
 ## Discussion des hypothèses
 
-**H1 (graphe et questions relationnelles) : partiellement validée.** Sur les questions relationnelles, l'architecture finale obtient un nDCG@5 de 0,87 contre 0,81 pour le RAG vectoriel et 0,86 pour le RAG hybride ; sur les questions multi-sauts, 0,71 contre 0,55 et 0,63. Le sens est celui attendu, mais les écarts avec le RAG hybride sont faibles et portent sur 8 et 10 questions. Le graphe seul fait mieux encore sur le relationnel (0,96), ce qui suggère que la fusion dilue en partie son apport.
+**H1 (graphe et questions relationnelles) : partiellement validée.** Sur les questions relationnelles, l'architecture finale obtient un nDCG@5 de 0,86, contre 0,81 pour le RAG vectoriel, mais au même niveau que le RAG hybride (0,86) ; sur les questions multi-sauts, elle atteint 0,71 contre 0,55 et 0,63. Le gain sur le RAG vectoriel est net, mais l'écart avec le RAG hybride est nul sur le relationnel et modéré sur le multi-sauts, sur 8 et 10 questions seulement. Le graphe seul fait mieux encore sur le relationnel (0,96), ce qui suggère que la fusion dilue en partie son apport.
 
-**H2 (pas de dégradation du factuel) : validée.** Sur les 13 questions factuelles, l'architecture finale atteint un nDCG@5 de 0,99, au niveau de BM25 et au-dessus du RAG hybride (0,93), et une exactitude de 0,92, identique à celle des RAG vectoriel et hybride. Le graphe seul, sans routage, tombe à 0,53 : c'est bien le routage qui protège les questions simples.
+**H2 (pas de dégradation du factuel) : validée.** Sur les 13 questions factuelles, l'architecture finale atteint un nDCG@5 de 0,99, au niveau de BM25 et au-dessus du RAG hybride (0,93), et une exactitude de 0,92, identique à celle des RAG vectoriel et hybride. Le graphe seul, sans routage, tombe à 0,52 : c'est bien le routage qui protège les questions simples.
 
 **H3 (abstention à bon escient) : partiellement validée.** Le rappel d'abstention est élevé (0,909) et aucune information restreinte n'a fuité, mais le taux d'abstentions abusives (18 %) est trop élevé pour un usage quotidien, et la précision d'abstention n'est que de 0,5.
 

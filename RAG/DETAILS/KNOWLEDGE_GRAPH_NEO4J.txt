@@ -1,0 +1,490 @@
+====================================================================================================
+                       LE GRAPHE DE CONNAISSANCES DANS NEO4J : MODÈLE, ÉCRITURE, LECTURE
+====================================================================================================
+
+Objectif : comprendre ce qu'est un graphe de connaissances, pourquoi le projet en utilise un,
+comment il est modélisé dans Neo4j et comment le code l'écrit et l'interroge en garantissant
+idempotence, provenance et contrôle d'accès. Modules concernés : RAG/CODE/core/ontology.py et
+RAG/CODE/knowledge_graph/ (client.py, schema.py, repository.py, queries.py).
+
+SOMMAIRE
+--------
+  1. Qu'est-ce qu'un graphe de connaissances ?
+  2. Pourquoi un graphe en plus de la recherche documentaire ?
+  3. Neo4j et le modèle « graphe de propriétés »
+  4. L'ontologie du projet (core/ontology.py)
+  5. Le schéma physique : contraintes et index (knowledge_graph/schema.py)
+  6. La connexion et la sécurité des requêtes (knowledge_graph/client.py)
+  7. L'écriture idempotente (knowledge_graph/repository.py)
+  8. La provenance portée par les relations
+  9. Versions, doublons et relations dérivées
+ 10. La lecture filtrée par les droits (knowledge_graph/queries.py)
+ 11. Exemples de requêtes Cypher commentées
+ 12. Ce que contient le graphe du corpus
+ 13. Neo4j Community : ce qui a été vérifié et ce qui manque
+ 14. Questions de jury possibles
+
+
+1. QU'EST-CE QU'UN GRAPHE DE CONNAISSANCES ?
+===========================================
+
+Un graphe est composé de NŒUDS (des choses) et d'ARÊTES (des liens entre ces choses). Un graphe
+de connaissances est un graphe dont les nœuds sont des entités du monde réel (une personne, une
+application, une procédure) et dont les arêtes sont des relations typées et orientées
+(« dépend de », « est responsable de »). Hogan et al. (2021) en donnent une synthèse de référence.
+
+Exemple tiré du corpus :
+
+    (Nadia Benali) --HAS_EXPERTISE--> (Lutte anti-blanchiment)
+    (Nadia Benali) --RESPONSIBLE_FOR--> (AML Watch)
+    (AML Watch)    --DEPENDS_ON-->     (CoreNova)
+    (AML Watch)    --DEPENDS_ON-->     (Sentinel KYC)
+
+Une phrase comme « qui faut-il prévenir si CoreNova tombe ? » devient un PARCOURS du graphe :
+partir de CoreNova, remonter les DEPENDS_ON jusqu'aux applications, puis les RESPONSIBLE_FOR
+jusqu'aux personnes.
+
+
+2. POURQUOI UN GRAPHE EN PLUS DE LA RECHERCHE DOCUMENTAIRE ?
+===========================================================
+
+Une recherche documentaire classique (BM25, vecteurs) renvoie des PASSAGES qui ressemblent à la
+question. Elle fonctionne bien quand la réponse est écrite en toutes lettres dans un passage
+(« le délai d'accusé de réception est de 48 heures »). Elle fonctionne mal quand la réponse est
+RÉPARTIE entre plusieurs documents :
+
+  - « Quel système dépend d'une application dont Youssef Amrani est le responsable ? »
+    nécessite deux faits, souvent dans deux documents différents ;
+  - « Quelles applications seraient affectées par une indisponibilité de CoreNova ? »
+    nécessite de suivre une chaîne de dépendances (CoreNova -> DataLake Horizon -> CrediScore).
+
+Le graphe stocke ces faits une fois pour toutes, dédoublonnés et reliés, ce qui permet de les
+enchaîner. C'est l'idée du GraphRAG (Edge et al., 2024 ; Peng et al., 2024).
+
+Résultat mesuré dans ce projet (questions-réponses, exactitude) : sur les questions
+relationnelles, l'architecture finale atteint 0,62 contre 0,12 pour le RAG vectoriel ; sur les
+questions multi-sauts, 0,60 contre 0,30. Sur les questions factuelles, le graphe seul est en
+revanche mauvais (0,31), d'où le routage décrit dans WORKFLOW_RAG_GRAPHRAG.txt.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | Le graphe n'est pas un remplaçant de la recherche documentaire : c'est un          |
+    | complément pour les questions qui RELIENT des entités. Mal utilisé (seul, sur des  |
+    | questions factuelles), il dégrade les résultats.                                   |
+    +------------------------------------------------------------------------------------+
+
+
+3. NEO4J ET LE MODÈLE « GRAPHE DE PROPRIÉTÉS »
+=============================================
+
+Neo4j est une base de données orientée graphe. Son modèle, dit « graphe de propriétés », a trois
+ingrédients :
+
+  - des nœuds portant une ou plusieurs ÉTIQUETTES (labels) : :Document, :Chunk, :Entity:Person ;
+  - des relations orientées portant un TYPE : -[:DEPENDS_ON]-> ;
+  - des PROPRIÉTÉS (clé-valeur) sur les nœuds ET sur les relations.
+
+La possibilité de mettre des propriétés sur les relations est essentielle pour le projet : c'est
+là qu'on stocke la provenance (quels documents justifient cette relation).
+
+On interroge Neo4j avec le langage Cypher (Francis et al., 2018), qui décrit des MOTIFS :
+
+    MATCH (s:System)-[:DEPENDS_ON]->(o:System {name: 'CoreNova'})
+    RETURN s.name
+
+Lecture : « trouve les systèmes s qui ont une relation DEPENDS_ON vers le système nommé
+CoreNova, et renvoie leur nom ».
+
+Alternative envisagée : le modèle RDF (triplets, SPARQL). Il est plus adapté à l'échange de
+données entre organisations et au raisonnement logique (ontologies OWL), mais ne permet pas
+directement de propriétés sur les relations (il faut la « réification »). Pour stocker la
+provenance de chaque relation, le graphe de propriétés est plus simple.
+
+
+4. L'ONTOLOGIE DU PROJET (core/ontology.py)
+==========================================
+
+L'ontologie est le « contrat » du graphe : elle dit quels types d'entités et de relations
+existent, et quelles combinaisons sont permises. Elle est définie en Python, dans un seul
+fichier, qui sert de source de vérité à tous les extracteurs.
+
+    Types d'entités : Person, Department, Project, Procedure, System, Concept, Domain
+
+    RelationSpec("DEPENDS_ON", frozenset({"System", "Project"}), frozenset({"System", "Project"}),
+                 "dépend de", "Dépendance technique (système) ou de planning (projet) ; ...")
+
+  - 1er argument : le nom de la relation ;
+  - 2e : les types de SUJET autorisés (domaine) ;
+  - 3e : les types d'OBJET autorisés (codomaine) ;
+  - 4e : la verbalisation française, utilisée pour écrire les faits dans les réponses
+    (« AML Watch dépend de CoreNova ») ;
+  - 5e : une description, utilisée aussi dans le prompt de l'extracteur LLM.
+
+La fonction validate_relation() vérifie toute relation avant écriture :
+
+    def validate_relation(subject_type, relation, object_type):
+        spec = RELATIONS.get(relation)
+        if spec is None:
+            return False, f"type de relation inconnu : {relation}"
+        if subject_type not in spec.subject_types:
+            return False, ...
+        if object_type not in spec.object_types:
+            return False, ...
+        if relation == "DEPENDS_ON" and subject_type != object_type:
+            return False, "DEPENDS_ON : le sujet et l'objet doivent être de même type"
+        return True, "ok"
+
+Une relation « Person -[USES]-> Concept » est ainsi rejetée, même si un LLM la propose.
+
+13 relations sémantiques : 11 EXTRAITES des textes (WORKS_IN, PART_OF, HAS_EXPERTISE,
+PARTICIPATES_IN, RESPONSIBLE_FOR, OWNS, DELIVERS, IMPACTS, DEPENDS_ON, USES, REFERENCES) et 2
+DÉRIVÉES (COVERS, calculée par règle ; BELONGS_TO, issue du référentiel).
+
+Pourquoi une ontologie « petite » ? Chaque type de relation doit répondre à une question que les
+métiers se posent (qui est responsable, qui sait, qu'est-ce qui dépend de quoi). Une ontologie
+trop riche rend l'extraction moins fiable et l'évaluation impossible.
+
+
+5. LE SCHÉMA PHYSIQUE : CONTRAINTES ET INDEX (knowledge_graph/schema.py)
+=======================================================================
+
+5.1 Le modèle de données
+------------------------
+
+    (:Document)<-[:PART_OF]-(:Chunk)-[:NEXT]->(:Chunk)
+    (:Chunk)-[:MENTIONS]->(:Entity:<Type>)
+    (:Document)-[:DESCRIBES|AUTHORED_BY|ISSUED_BY]->(:Entity)
+    (:Document)-[:SUPERSEDES|DUPLICATE_OF|SIMILAR_TO]->(:Document)
+    (:Entity)-[:WORKS_IN|...|BELONGS_TO]->(:Entity)
+    (:IngestionRun)
+
+Schéma en ASCII :
+
+         +-----------+  DESCRIBES / AUTHORED_BY / ISSUED_BY   +------------------+
+         | Document  |--------------------------------------->| Entity:Procedure |
+         | (statut,  |                                        | Entity:Person... |
+         | diffusion)|<--+ SUPERSEDES / DUPLICATE_OF          +------------------+
+         +-----------+   |                                       ^       |
+               ^         +---- (autre Document)                  |       | DEPENDS_ON,
+               | PART_OF                                MENTIONS |       | RESPONSIBLE_FOR...
+         +-----------+   NEXT    +-----------+                   |       v  (avec provenance)
+         |  Chunk    |---------->|  Chunk    |-------------------+  +------------------+
+         | (texte,   |           |           |                      | Entity:System    |
+         | vecteur)  |           +-----------+                      +------------------+
+         +-----------+
+
+Chaque entité porte DEUX étiquettes : `Entity` (commune à toutes, porteuse de la contrainte
+d'unicité) et son type (`Person`, `System`...). On peut ainsi écrire MATCH (e:Entity {id: $id})
+sans connaître le type, ou MATCH (p:Person) pour filtrer.
+
+5.2 Contraintes et index
+------------------------
+
+    CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE
+
+  - Une contrainte d'unicité garantit qu'il n'existe qu'une entité par identifiant. Elle crée
+    aussi un index, ce qui rend la recherche par identifiant rapide. Elle est la base de
+    l'idempotence : MERGE (e:Entity {id: ...}) ne peut pas créer de doublon.
+  - `IF NOT EXISTS` rend l'instruction rejouable : ensure_schema() peut être appelée à chaque
+    démarrage de l'API.
+
+    CREATE VECTOR INDEX chunk_embedding_vec IF NOT EXISTS FOR (c:Chunk) ON c.embedding
+    OPTIONS {indexConfig: {`vector.dimensions`: 256, `vector.similarity_function`: 'cosine'}}
+
+  - Index VECTORIEL (algorithme HNSW, Malkov et Yashunin, 2020) sur le vecteur de chaque passage.
+    Il permet de trouver rapidement les passages dont le vecteur est le plus proche (cosinus) de
+    celui de la question. La dimension (256 pour WordLlama, 300 pour spaCy) est fixée à la
+    création ; si l'on change d'encodeur, ensure_schema() détecte l'écart, supprime l'index et
+    les anciens vecteurs, et il faut réingérer.
+
+    CREATE FULLTEXT INDEX chunk_text_ft IF NOT EXISTS FOR (c:Chunk) ON EACH [c.search_text]
+    OPTIONS {indexConfig: {`fulltext.analyzer`: 'french'}}
+
+  - Index PLEIN TEXTE (Lucene) avec l'analyseur français : mots vides retirés, racinisation
+    (« procédures » et « procédure » se rejoignent). Le score renvoyé est un score BM25.
+  - Un second index plein texte (analyseur « standard-folding », qui retire les accents) porte
+    sur le nom et les alias des entités : il sert à retrouver une entité à partir d'un mot de la
+    question.
+
+Conséquence architecturale : graphe, vecteurs et plein texte sont dans la MÊME base. Une seule
+base à sauvegarder, à sécuriser, et surtout à filtrer par les droits d'accès.
+
+
+6. LA CONNEXION ET LA SÉCURITÉ DES REQUÊTES (knowledge_graph/client.py)
+======================================================================
+
+    self._driver = GraphDatabase.driver(uri, auth=(user, password), max_connection_pool_size=20,
+                                        connection_timeout=10, notifications_min_severity="OFF")
+
+  - Un seul « driver » par processus : il gère un réservoir (pool) de connexions réutilisées.
+  - Le mot de passe vient de la configuration (SecretStr) et n'est jamais journalisé.
+
+    def read(self, query: str, **params: Any) -> list[dict]:
+        try:
+            records, _, _ = self._driver.execute_query(query, params, database_=self.database, routing_="r")
+        except ServiceUnavailable as exc:
+            raise GraphUnavailable("Neo4j est indisponible") from exc
+        return [r.data() for r in records]
+
+  - Toutes les requêtes sont PARAMÉTRÉES : les valeurs passent dans `params` et sont référencées
+    par `$nom` dans le texte Cypher. On n'écrit jamais f"... WHERE e.name = '{saisie}'", ce qui
+    exclut l'injection Cypher (l'équivalent de l'injection SQL).
+  - Exception : les étiquettes et types de relations ne peuvent pas être paramétrés en Cypher.
+    Quand le code les insère dans le texte (par exemple MERGE (s)-[r:{relation}]->(o)), la valeur
+    provient d'une LISTE BLANCHE interne (ENTITY_LABELS, SEMANTIC_RELATIONS), jamais de
+    l'utilisateur.
+  - Une indisponibilité de Neo4j est traduite en GraphUnavailable, que l'API convertit en
+    réponse 503 compréhensible.
+
+
+7. L'ÉCRITURE IDEMPOTENTE (knowledge_graph/repository.py)
+========================================================
+
+« Idempotent » signifie : exécuter une opération deux fois donne le même résultat qu'une seule
+fois. Pour une ingestion, c'est indispensable : on relance régulièrement le traitement d'un
+répertoire, et il ne doit ni dupliquer des nœuds, ni accumuler des preuves.
+
+La méthode write_document() écrit un document dans UNE transaction (session.execute_write) :
+soit tout est écrit, soit rien. Elle procède ainsi :
+
+    def work(tx) -> None:
+        self._detach_content(tx, record.id)                               # (1)
+        tx.run("MERGE (d:Document {id: $p.id}) SET d += $p ...", p=props) # (2)
+        self._merge_entities(tx, entity_ids)                              # (3)
+        tx.run("""UNWIND $rows AS row ... CREATE (c:Chunk {...}) ...
+                  CREATE (c)-[:PART_OF]->(d)""", rows=chunks)             # (4)
+        ...                                                               # (5) NEXT, MENTIONS
+        ... MERGE (s)-[r:{relation}]->(o) ...                             # (6) relations
+        ... MERGE (d)-[:{rel_type}]->(e) ...                              # (7) DESCRIBES...
+
+  (1) On RETIRE d'abord tout ce que ce document avait apporté au graphe (passages, mentions, et
+      ses preuves dans les relations). Ainsi, réécrire un document modifié ne laisse aucune trace
+      de l'ancienne version.
+  (2) MERGE crée le nœud Document s'il n'existe pas, le retrouve sinon ; `SET d += $p` met à jour
+      toutes ses propriétés d'un coup.
+  (3) Les entités sont fusionnées par identifiant (MERGE), groupées par étiquette.
+  (4) UNWIND transforme une liste en lignes : un seul aller-retour réseau crée tous les passages
+      du document (au lieu d'une requête par passage).
+  (5) NEXT relie les passages dans l'ordre ; MENTIONS relie chaque passage aux entités citées.
+  (6) Les relations sémantiques sont fusionnées (MERGE) et leurs preuves AJOUTÉES (section 8).
+  (7) Liens de métadonnées : document -> entité décrite, rédacteur, direction.
+
+Mesure : relancer l'ingestion du corpus sans changement prend 0,38 s et ne modifie rien ; le
+test d'intégration test_reingestion_is_idempotent compte les nœuds et relations avant et après.
+
+
+8. LA PROVENANCE PORTÉE PAR LES RELATIONS
+========================================
+
+C'est le cœur du modèle. Une relation comme AML Watch -[DEPENDS_ON]-> CoreNova peut être
+affirmée par plusieurs documents. Plutôt que de créer une relation par document (le graphe
+serait rempli de doublons), le projet crée UNE relation et lui attache des LISTES ALIGNÉES :
+l'élément i de chaque liste décrit la i-ème preuve.
+
+Exemple RÉEL lu dans la base après ingestion du corpus :
+
+    (sys:amlwatch)-[:DEPENDS_ON]->(sys:corenova)
+      source_doc_ids      : ['doc-e9a34121b696', 'doc-57192b22cb1c', 'doc-35eadce645b4']
+      evidence_chunk_ids  : ['doc-e9a34121b696#c001', 'doc-57192b22cb1c#c002',
+                             'doc-35eadce645b4#c002']
+      evidence_quotes     : ['Le constat est le suivant : Orion CRM, AML Watch et Sentinel KYC
+                              dépendent tous de CoreNova en temps réel.',
+                             'AML Watch reste par ailleurs alimenté par CoreNova pour les
+                              opérations.',
+                             'AML Watch est alimenté en temps réel par les opérations
+                              enregistrées dans CoreNova.']
+      evidence_extractors : ['rules', 'rules', 'rules']
+      confidence          : 0.85
+      extractors          : ['rules']
+
+Trois documents différents confirment cette dépendance, avec leurs phrases exactes. Lorsque la
+plateforme cite ce fait dans une réponse ([F2]), elle peut renvoyer à ces passages.
+
+Le code d'ajout d'une preuve :
+
+    MERGE (s)-[r:DEPENDS_ON]->(o)
+    ON CREATE SET r.source = 'extracted', r.source_doc_ids = [], r.evidence_chunk_ids = [], ...
+    SET r.source_doc_ids = CASE WHEN row.doc IN r.source_doc_ids THEN r.source_doc_ids
+                                ELSE r.source_doc_ids + row.doc END,
+        r.evidence_chunk_ids = r.evidence_chunk_ids + row.chunk,
+        r.evidence_quotes = r.evidence_quotes + row.quote, ...
+
+  - ON CREATE SET : initialisation des listes vides, seulement à la création de la relation.
+  - Chaque preuve est ajoutée à la fin de chaque liste : les listes restent alignées.
+  - Les AGRÉGATS (rôles, confiance maximale, extracteurs) sont ensuite RECALCULÉS à partir des
+    preuves (bloc _AGGREGATES, avec la fonction Cypher reduce) : ils ne peuvent donc jamais
+    diverger des preuves.
+
+Le retrait d'un document fait l'inverse (_detach_content) : on garde les indices i dont le passage
+n'appartient pas au document retiré, on reconstruit chaque liste avec ces indices, puis :
+
+    MATCH ()-[r]->() WHERE r.source = 'extracted' AND size(r.source_doc_ids) = 0 DELETE r
+
+  - une relation qui n'a plus AUCUNE preuve est supprimée ; une relation encore confirmée par un
+    autre document est conservée.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | Chaque fait du graphe sait d'où il vient. C'est ce qui permet (1) de citer la       |
+    | source d'un fait dans une réponse, (2) de filtrer les faits selon les droits de     |
+    | l'utilisateur, (3) de retirer proprement un document et ses conséquences.           |
+    +------------------------------------------------------------------------------------+
+
+
+9. VERSIONS, DOUBLONS ET RELATIONS DÉRIVÉES
+==========================================
+
+  - update_versions() regroupe les documents par référence (« PRC-KYC-001 »), les trie par
+    numéro de version puis par date, marque le plus récent `active` et les autres `superseded`,
+    et crée les relations SUPERSEDES (nouvelle -> ancienne). Les versions remplacées restent
+    interrogeables : le workflow les signale (« la version 2.0 remplace la version 1.0 ») au lieu
+    de les cacher, car l'historique a une valeur pour l'audit.
+  - Les doublons (statut `duplicate`) sont reliés au document canonique par DUPLICATE_OF et ne
+    portent aucun passage.
+  - derive_covers() : règle métier « une procédure ou un projet TRAITE les concepts mentionnés
+    dans les documents qui le décrivent ». Relation recalculée entièrement à chaque passe
+    (source = 'rule').
+  - derive_taxonomy_links() : rattachement des concepts, procédures et projets à leur domaine
+    (BELONGS_TO), à partir du référentiel (source = 'referential').
+  - compute_similar_to() : pour chaque document, les 3 documents dont le vecteur moyen des
+    passages est le plus proche (SIMILAR_TO, utilisée par l'exploration et les recommandations).
+  - cleanup_orphans() : supprime les entités (hors domaines) que plus aucun passage ni document
+    ne mentionne.
+
+
+10. LA LECTURE FILTRÉE PAR LES DROITS (knowledge_graph/queries.py)
+=================================================================
+
+Toutes les requêtes d'exploration (statistiques, recherche d'entité, fiche d'un nœud, voisinage,
+vue d'ensemble) reçoivent la liste `$allowed` des documents autorisés pour l'utilisateur (voir
+ARCHITECTURE.txt, section 7). Deux fragments Cypher définissent la visibilité :
+
+    _VISIBLE_REL = "(r.source = 'referential' OR any(d IN coalesce(r.source_doc_ids, [])
+                     WHERE d IN $allowed))"
+
+  - une relation est visible si elle vient du référentiel (taxonomie publique) ou si AU MOINS UN
+    de ses documents sources est autorisé.
+
+    _VISIBLE_ENTITY = "(e:Domain OR EXISTS { MATCH (c:Chunk)-[:MENTIONS]->(e) WHERE c.doc_id IN $allowed }
+                        OR EXISTS { MATCH (d:Document)-[:DESCRIBES]->(e) WHERE d.id IN $allowed })"
+
+  - une entité est visible si c'est un domaine, ou si elle est mentionnée dans un passage
+    autorisé, ou décrite par un document autorisé.
+
+Conséquence : un collaborateur qui n'a pas accès au plan de continuité ne voit pas, dans
+l'explorateur, les relations établies uniquement par ce plan ; et une entité citée uniquement
+dans un document restreint lui est invisible. Le test test_graph_queries_respect_access le
+vérifie.
+
+Les fiches de documents renvoyées par l'API excluent volontairement deux propriétés internes :
+le chemin du fichier sur le serveur (source_path) et la signature MinHash. Elles n'apportent
+rien à l'utilisateur et le chemin révélerait l'organisation du serveur.
+
+
+11. EXEMPLES DE REQUÊTES CYPHER COMMENTÉES
+=========================================
+
+À exécuter dans Neo4j Browser (en mode débogage, voir INSTALLATION_ET_EXECUTION.txt) ou avec
+cypher-shell.
+
+  a) Les applications qui dépendent de CoreNova, avec le nombre de documents qui l'affirment :
+
+        MATCH (s:System)-[r:DEPENDS_ON]->(:System {name: 'CoreNova'})
+        RETURN s.name AS application, size(r.source_doc_ids) AS documents
+        ORDER BY documents DESC, application
+
+  b) Les dépendances indirectes (1 ou 2 sauts) :
+
+        MATCH p = (s:System)-[:DEPENDS_ON*1..2]->(:System {name: 'CoreNova'})
+        RETURN [n IN nodes(p) | n.name] AS chemin
+
+     `*1..2` signifie « une à deux relations DEPENDS_ON enchaînées ».
+
+  c) Les relations confirmées par au moins deux documents :
+
+        MATCH (s)-[r]->(o) WHERE r.source = 'extracted' AND size(r.source_doc_ids) >= 2
+        RETURN s.name, type(r), o.name, size(r.source_doc_ids) AS n ORDER BY n DESC
+
+  d) Les versions d'une procédure :
+
+        MATCH (new:Document)-[:SUPERSEDES]->(old:Document)
+        RETURN new.reference, new.version, old.version
+
+  e) Les entités candidates en attente de validation :
+
+        MATCH (e:Entity {status: 'candidate'})
+        RETURN e.name, e.possible_match, e.match_score
+
+  f) Recherche vectorielle (ce que fait retrieval/text_search.py, avec le vecteur de la question) :
+
+        CALL db.index.vector.queryNodes('chunk_embedding_vec', 40, $vecteur)
+        YIELD node, score
+        WHERE node.doc_id IN $allowed
+        RETURN node.id, score ORDER BY score DESC, node.id
+
+
+12. CE QUE CONTIENT LE GRAPHE DU CORPUS
+======================================
+
+Source : RAG/CODE/evaluation/results/RESULTATS.md (campagne principale).
+
+    Nœuds par type    Chunk 169, Document 35, Concept 25, Person 24, Department 19, Domain 16,
+                      System 10, Procedure 9, Project 7, IngestionRun 2
+    Relations extraites des documents        153
+    Relations avec provenance complète       100 %
+    Confiance moyenne                        0,769
+    Documents sources par relation           1,67 en moyenne
+    Relations confirmées par ≥ 2 documents   63
+    Entités métier                           69 (degré moyen 5,1 ; aucune entité isolée)
+
+
+13. NEO4J COMMUNITY : CE QUI A ÉTÉ VÉRIFIÉ ET CE QUI MANQUE
+==========================================================
+
+Vérifié expérimentalement sur Neo4j 5.26.31 Community (requête dbms.components) : les index
+vectoriels (HNSW, cosinus) et plein texte (analyseurs french et standard-folding) sont
+disponibles et utilisés par la plateforme. Avant d'écrire le code, un essai avec un index
+vectoriel et un index plein texte de test a confirmé ce point (la documentation officielle des
+index, références D1 et D2 de la bibliographie, ne suffisait pas à trancher la question de
+l'édition).
+
+Ce que l'édition Community n'offre pas, et ses conséquences :
+
+    Fonction absente                    Conséquence dans le projet
+    ----------------------------------  ------------------------------------------------------
+    Sauvegarde à chaud                  sauvegarde base arrêtée (neo4j-admin database dump),
+                                        script CODE/scripts/ops/backup.sh
+    Contrôle d'accès fin dans la base   contrôle d'accès APPLICATIF (liste $allowed passée à
+    (rôles, droits par propriété)       toutes les requêtes)
+    Grappe (cluster), haute dispo.      une seule instance ; acceptable pour un pilote
+
+
+14. QUESTIONS DE JURY POSSIBLES
+==============================
+
+    +------------------------------------------------------------------------------------+
+    | « Pourquoi Neo4j plutôt qu'une base relationnelle (PostgreSQL) ? »                 |
+    | Les questions multi-sauts (« les dépendances des dépendances ») s'écrivent en une  |
+    | ligne en Cypher (-[:DEPENDS_ON*1..2]->) et s'exécutent en suivant des pointeurs.   |
+    | En SQL, il faudrait des jointures récursives. De plus, Neo4j offre dans la même    |
+    | base les index vectoriel et plein texte. PostgreSQL avec pgvector et une extension |
+    | de graphe aurait été une alternative crédible ; Neo4j a été préféré pour Cypher,   |
+    | la visualisation et la maturité de ses index.                                      |
+    +------------------------------------------------------------------------------------+
+
+    +------------------------------------------------------------------------------------+
+    | « Pourquoi des listes alignées plutôt qu'un nœud par preuve ? »                    |
+    | Un nœud « Preuve » par affirmation (réification) serait plus normalisé, mais       |
+    | multiplierait les nœuds et compliquerait chaque requête de parcours. Les listes    |
+    | alignées gardent une relation par fait, avec toutes ses preuves, et le retrait      |
+    | d'un document reste une opération locale. Le prix est une écriture plus délicate,  |
+    | encapsulée dans repository.py et couverte par des tests.                           |
+    +------------------------------------------------------------------------------------+
+
+    +------------------------------------------------------------------------------------+
+    | « Que se passe-t-il si deux documents se contredisent ? »                          |
+    | Le graphe stocke les deux affirmations avec leur provenance ; il ne tranche pas.   |
+    | C'est le workflow de questions-réponses (orchestration/conflicts.py) qui détecte   |
+    | les versions et les valeurs divergentes et les signale à l'utilisateur, en         |
+    | privilégiant la version en vigueur.                                                |
+    +------------------------------------------------------------------------------------+

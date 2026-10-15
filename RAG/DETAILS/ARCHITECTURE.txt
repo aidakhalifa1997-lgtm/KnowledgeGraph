@@ -347,6 +347,13 @@ Le projet applique (b). Le module retrieval/access.py calcule la liste :
 Cette liste est ensuite passée à TOUTES les recherches (BM25, vecteurs, graphe). Une relation du
 graphe n'est visible que si au moins un de ses documents sources est autorisé.
 
+Précision technique honnête : pour la recherche vectorielle, l'index HNSW de Neo4j calcule
+d'abord les voisins les plus proches parmi TOUS les passages, puis la clause WHERE de la même
+requête ne garde que ceux des documents autorisés (retrieval/text_search.py). Le filtrage a donc
+lieu à l'intérieur de la base, dans la même requête : aucun passage non autorisé n'en sort ni
+n'atteint le classement, la fusion ou le générateur. Si le filtrage laisse trop peu de résultats,
+la requête est relancée avec un réservoir de candidats plus grand.
+
 Pourquoi (b) plutôt que (a) ? Avec le post-filtrage, un passage non autorisé peut influencer le
 classement, être résumé par le LLM, ou apparaître dans un message d'erreur. Avec le
 pré-filtrage, il n'entre jamais dans la chaîne de traitement. Le test d'intégration

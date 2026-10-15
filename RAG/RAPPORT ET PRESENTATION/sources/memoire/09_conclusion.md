@@ -10,7 +10,7 @@ Faute de documents réels utilisables, nous avons construit un corpus synthétiq
 
 ## Réponses aux questions de recherche {-}
 
-**QR1, apport du graphe pour les questions relationnelles et multi-sauts.** La réponse est positive mais nuancée. En recherche documentaire, l'architecture finale fait mieux que le RAG vectoriel sur ces catégories, mais ne se distingue que faiblement du RAG hybride. L'effet est plus net sur les réponses : l'exactitude passe de 0,12 à 0,62 sur les questions relationnelles et de 0,30 à 0,60 sur les questions multi-sauts entre le RAG vectoriel et l'architecture finale. L'hypothèse H1 n'est donc que partiellement validée : le graphe aide surtout à rassembler les faits nécessaires à la réponse, davantage qu'à classer les documents.
+**QR1, apport du graphe pour les questions relationnelles et multi-sauts.** La réponse est positive mais nuancée. En recherche documentaire, l'architecture finale fait mieux que le RAG vectoriel sur ces catégories, mais ne se distingue que peu ou pas du RAG hybride. L'effet est plus net sur les réponses : l'exactitude passe de 0,12 à 0,62 sur les questions relationnelles et de 0,30 à 0,60 sur les questions multi-sauts entre le RAG vectoriel et l'architecture finale. L'hypothèse H1 n'est donc que partiellement validée : le graphe aide surtout à rassembler les faits nécessaires à la réponse, davantage qu'à classer les documents.
 
 **QR2, effet sur les questions factuelles.** Le routage protège les questions simples. L'architecture finale conserve une exactitude de 0,92 sur les questions factuelles, comme les RAG vectoriel et hybride, alors que le GraphRAG seul tombe à 0,31. L'hypothèse H2 est validée.
 

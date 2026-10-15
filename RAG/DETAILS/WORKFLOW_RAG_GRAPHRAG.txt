@@ -1,0 +1,544 @@
+====================================================================================================
+                  RAG, RECHERCHE HYBRIDE ET GRAPHRAG : COMMENT LA PLATEFORME TROUVE LES PREUVES
+====================================================================================================
+
+Objectif : comprendre, depuis les principes, comment la plateforme retrouve les passages et les
+faits qui serviront à répondre, et pourquoi elle combine trois sources (BM25, vecteurs, graphe).
+Modules concernés : RAG/CODE/retrieval/ (embeddings.py, text_search.py, fusion.py, graph.py,
+retriever.py, access.py) et RAG/CODE/orchestration/classifier.py (routage).
+
+SOMMAIRE
+--------
+  1. Le RAG en une page
+  2. Recherche lexicale : BM25
+  3. Recherche vectorielle : encodeurs et index HNSW
+  4. Pourquoi combiner : la recherche hybride
+  5. La fusion des classements : Reciprocal Rank Fusion
+  6. La garantie par source (modification post-gel)
+  7. GraphRAG local : la recherche guidée par le graphe
+  8. Le PageRank personnalisé expliqué simplement
+  9. Des faits et des passages citables
+ 10. Le routage selon le type de question
+ 11. Les cinq stratégies comparées
+ 12. Résultats mesurés
+ 13. Déterminisme : un détail qui compte
+ 14. Limites et questions de jury
+
+
+1. LE RAG EN UNE PAGE
+====================
+
+Un grand modèle de langage (LLM) connaît ce qu'il a vu pendant son entraînement, mais ignore les
+documents internes d'une banque et peut inventer des réponses plausibles. Le RAG
+(Retrieval-Augmented Generation, Lewis et al., 2020) consiste à :
+
+    1. RECHERCHER les passages pertinents dans une base documentaire ;
+    2. les donner au générateur comme CONTEXTE ;
+    3. GÉNÉRER une réponse à partir de ce contexte, en citant les sources.
+
+La qualité d'un système RAG dépend d'abord de l'étape 1 : si le bon passage n'est pas retrouvé,
+aucun générateur, si puissant soit-il, ne peut donner la bonne réponse. C'est pourquoi ce document
+est consacré à la recherche, et pourquoi l'évaluation mesure la recherche séparément de la
+réponse (voir TESTS_ET_EVALUATION.txt).
+
+Dans ce projet, aucune clé de LLM n'a été fournie : le générateur mesuré est EXTRACTIF (il reprend
+des phrases des passages retrouvés). La recherche, elle, est identique avec ou sans LLM.
+
+
+2. RECHERCHE LEXICALE : BM25
+===========================
+
+BM25 (Robertson et Zaragoza, 2009) classe les passages selon les MOTS qu'ils partagent avec la
+question, en tenant compte de trois effets :
+
+  - un mot fréquent dans le passage compte plus, mais avec un effet de saturation (le dixième
+    « délai » apporte moins que le premier) ;
+  - un mot RARE dans le corpus compte plus qu'un mot courant (pondération IDF : « RTO » est plus
+    discriminant que « procédure ») ;
+  - un passage long est légèrement pénalisé (il contient mécaniquement plus de mots).
+
+Dans la plateforme, BM25 est calculé par l'index plein texte Lucene de Neo4j (analyseur
+français : mots vides retirés, racinisation). La requête est construite par build_lucene_query()
+(retrieval/text_search.py) :
+
+    for word in re.findall(r"[\wÀ-ÿ'-]+", question):
+        bare = word.strip("'-").lower()
+        if len(bare) < 2 or fold_accents(bare) in STOPWORDS:
+            continue
+        terms.append(_escape(bare))
+    clauses = ['"' + _escape(p.lower()) + '"^2' for p in (phrases or []) if p.strip()]
+    clauses += terms
+    return " OR ".join(dict.fromkeys(clauses)) or "*"
+
+  - Les mots outils (« le », « de », « quel ») sont retirés.
+  - Les caractères spéciaux de Lucene (+ - ! ( ) : ...) sont échappés, et tout est mis en
+    minuscules : un utilisateur qui écrit « AND » ou « title:x » ne peut pas modifier la syntaxe
+    de la requête (c'est une protection contre l'injection dans le moteur de recherche).
+  - Les noms d'entités reconnus dans la question (« CoreNova ») sont ajoutés comme expressions
+    exactes avec un poids double (^2).
+  - Les termes sont reliés par OR : un passage n'a pas besoin de contenir tous les mots.
+
+Forces de BM25 : les termes exacts (sigles, références, noms propres, valeurs). Faiblesse : les
+paraphrases (« délai de reprise » ne trouve pas « RTO » si le passage n'utilise que le sigle).
+
+
+3. RECHERCHE VECTORIELLE : ENCODEURS ET INDEX HNSW
+=================================================
+
+3.1 Le principe
+---------------
+
+Un ENCODEUR transforme un texte en un vecteur de nombres (un « plongement », embedding) de sorte
+que deux textes de sens proche aient des vecteurs proches. On compare deux vecteurs par la
+similarité cosinus (le cosinus de l'angle entre eux) :
+
+    cos(u, v) = (u · v) / (||u|| × ||v||)        1 = même direction, 0 = sans rapport
+
+Tous les vecteurs de la plateforme sont normalisés (norme 1) : le cosinus se réduit alors au
+produit scalaire u · v (fonction _normalize_rows de retrieval/embeddings.py).
+
+3.2 Les encodeurs disponibles
+-----------------------------
+
+Contrainte forte de l'environnement de développement : aucun modèle ne pouvait être téléchargé
+depuis HuggingFace. Deux encodeurs installables depuis PyPI ont donc été implémentés et COMPARÉS :
+
+  - spaCy fr_core_news_md : moyenne des vecteurs de mots français (300 dimensions), mots outils
+    exclus. Simple et explicable, mais ignore l'ordre des mots ;
+  - WordLlama : encodeur statique (256 dimensions) distillé à partir des plongements de jetons
+    d'un LLM. Les poids sont fournis dans le paquet PyPI : aucun téléchargement.
+
+Le choix a été fait par une ABLATION (expérience où l'on change un seul élément) : la recherche
+vectorielle seule obtient un nDCG@5 de 0,720 avec WordLlama contre 0,409 avec spaCy. WordLlama est
+devenu l'encodeur par défaut (EMBEDDING_PROVIDER=wordllama). La décision a été prise sur les
+questions de développement, mais les résultats complets avaient déjà été vus : le journal
+(evaluation/JOURNAL_DEVELOPPEMENT.md) le signale honnêtement comme un choix en partie a posteriori.
+
+Ces deux encodeurs restent nettement moins performants que les modèles neuronaux de phrases
+(Sentence-BERT, Reimers et Gurevych, 2019, et ses successeurs multilingues). C'est une limite
+importante des résultats (section 14).
+
+3.3 L'index HNSW
+----------------
+
+Comparer le vecteur de la question à tous les vecteurs de passages devient coûteux quand le corpus
+grandit. L'index HNSW (Hierarchical Navigable Small World, Malkov et Yashunin, 2020) organise les
+vecteurs en un graphe de proximité à plusieurs niveaux : on part d'un point d'entrée au niveau le
+plus grossier et on « descend » en se rapprochant de la cible. La recherche est APPROCHÉE (elle
+peut rater un voisin) mais très rapide.
+
+    CALL db.index.vector.queryNodes('chunk_embedding_vec', $pool, $embedding)
+    YIELD node, score
+    WHERE node.doc_id IN $allowed
+    RETURN node.id AS id, score ORDER BY score DESC, id LIMIT $k
+
+  - `$pool` : nombre de candidats demandés à l'index (au moins 40) ;
+  - `WHERE node.doc_id IN $allowed` : filtrage par les droits DANS la requête ; si le filtrage
+    laisse moins de k résultats, la fonction vector() relance avec un réservoir trois fois plus
+    grand (jusqu'à 1 000) ;
+  - `ORDER BY score DESC, id` : en cas d'égalité de score, l'identifiant départage. Sans cela,
+    l'ordre des ex æquo pourrait varier d'une exécution à l'autre (section 13).
+
+
+4. POURQUOI COMBINER : LA RECHERCHE HYBRIDE
+==========================================
+
+BM25 et la recherche vectorielle font des erreurs DIFFÉRENTES :
+
+    Question                                       BM25                 Vecteurs
+    ---------------------------------------------  -------------------  -------------------
+    « Quel est le RTO de CoreNova ? »              trouve « RTO »        peut se perdre
+    « Combien de temps pour redémarrer CoreNova ?» rate (mots absents)   peut trouver
+    « PRC-KYC-001 est-elle en vigueur ? »          trouve la référence   faible
+
+Combiner les deux classements donne une recherche plus robuste : c'est la recherche hybride.
+Les travaux de référence (Thakur et al., 2021) ont d'ailleurs montré que BM25 reste une baseline
+très solide face aux récupérateurs neuronaux hors de leur domaine d'entraînement. Nos résultats le
+confirment (section 12).
+
+
+5. LA FUSION DES CLASSEMENTS : RECIPROCAL RANK FUSION
+====================================================
+
+5.1 Le problème
+---------------
+
+BM25 renvoie des scores comme 7,3 ou 12,1 ; le cosinus est entre -1 et 1 ; le PageRank donne des
+probabilités. Ces scores ne sont PAS comparables : additionner 7,3 et 0,82 n'a pas de sens.
+
+5.2 La solution : n'utiliser que les rangs
+------------------------------------------
+
+La Reciprocal Rank Fusion (Cormack, Clarke et Büttcher, 2009) ignore les scores et ne garde que
+les RANGS :
+
+    RRF(d) = somme sur les sources i de  w_i / (k + rang_i(d))
+
+avec k = 60 (valeur de l'article) et w_i un poids par source (1 par défaut).
+
+    def reciprocal_rank_fusion(rankings, k=60, weights=None):
+        for source, items in rankings.items():
+            w = weights.get(source, 1.0)
+            if w <= 0:
+                continue
+            for rank, item in enumerate(items, start=1):
+                scores[item] = scores.get(item, 0.0) + w / (k + rank)
+        ordered = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
+
+  - `enumerate(items, start=1)` : le premier élément a le rang 1.
+  - Un élément absent d'une liste ne reçoit rien de cette source.
+  - Tri par score décroissant, puis par identifiant (départage déterministe).
+
+5.3 Exemple chiffré
+-------------------
+
+    Passage   rang BM25   rang vecteurs   score RRF (k = 60)
+    -------   ---------   -------------   --------------------------------------
+    P1        1           5               1/61 + 1/65 = 0,01639 + 0,01538 = 0,03178
+    P2        3           1               1/63 + 1/61 = 0,01587 + 0,01639 = 0,03226
+    P3        2           absent          1/62                            = 0,01613
+
+Classement fusionné : P2, P1, P3. Un passage bien placé dans les DEUX listes l'emporte sur un
+passage très bien placé dans une seule. C'est en général souhaitable... sauf dans le cas de la
+section suivante.
+
+Pourquoi k = 60 ? Un k grand aplatit les écarts entre rangs (le 1er et le 10e sont proches) ; un
+k petit les accentue. 60 est la valeur proposée et validée empiriquement par l'article d'origine ;
+nous ne l'avons pas réglée, pour ne pas sur-ajuster le système à notre petit jeu de questions.
+
+
+6. LA GARANTIE PAR SOURCE (MODIFICATION POST-GEL)
+================================================
+
+Le défaut de la RRF est apparu sur une question de développement (Q62, « Quel est le RTO de
+CoreNova ? » posée par un ingénieur de la DSI). Le passage qui contient la réponse (« CoreNova —
+RTO : 4 heures ») était classé 1er par BM25 seul, grâce au sigle exact. Mais il obtenait
+1/61 ≈ 0,016, alors que des passages moyens, présents dans les trois listes (BM25, vecteurs,
+graphe), obtenaient environ 3/64 ≈ 0,047. Il sortait des 8 passages retenus.
+
+La correction (fonction fuse_top_k de retrieval/fusion.py) réserve une place aux premiers
+éléments de chaque source active :
+
+    required: list[str] = []
+    for source, items in rankings.items():
+        if weights.get(source, 1.0) > 0:
+            required += [item for item in items[:guarantee] if item not in required]
+    ...
+    for item in required:
+        if item in chosen or item not in by_id:
+            continue
+        if len(selected) >= top_k:
+            # on retire le dernier élément NON garanti pour faire de la place
+            ...
+        selected.append(by_id[item])
+
+  - `guarantee=1` (valeur par défaut, RETRIEVAL_SOURCE_GUARANTEE=1) : le meilleur élément de
+    chaque source est toujours dans le contexte final ;
+  - `guarantee=0` redonne exactement la RRF pure de la configuration gelée.
+
+Cette modification a été faite APRÈS le gel de la configuration. Elle est donc signalée comme
+« post-gel » dans le journal, et ses effets sont rapportés à part : gain sur les questions de
+développement (exactitude 0,882 -> 0,941) mais AUCUN gain sur les questions jamais inspectées
+(0,694 -> 0,694). C'est un bon exemple de la raison d'être du protocole : sans cette séparation,
+on aurait pu croire à une amélioration générale.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | Corriger un cas observé améliore toujours ce cas. La seule preuve d'un progrès     |
+    | réel est une amélioration sur des questions jamais vues pendant la mise au point.  |
+    +------------------------------------------------------------------------------------+
+
+
+7. GRAPHRAG LOCAL : LA RECHERCHE GUIDÉE PAR LE GRAPHE
+====================================================
+
+7.1 Local ou global ?
+---------------------
+
+Edge et al. (2024) distinguent deux usages d'un graphe dans un système RAG :
+
+  - GLOBAL : répondre à des questions de synthèse sur tout le corpus (« quels sont les grands
+    thèmes ? »), en résumant des communautés d'entités. Cela demande un LLM pour construire les
+    résumés ;
+  - LOCAL : partir des entités citées dans la question et explorer leur voisinage.
+
+La plateforme implémente le GraphRAG LOCAL, adapté aux questions relationnelles d'une banque
+(« qui », « dépend de », « responsable de »). La méthode s'inspire de HippoRAG (Gutiérrez et al.,
+2024), qui utilise un PageRank personnalisé à partir des entités de la question.
+
+7.2 Les étapes (GraphRetriever.retrieve, retrieval/graph.py)
+-----------------------------------------------------------
+
+    question : « Qui est le responsable de la procédure qui utilise l'outil AML Watch ? »
+       |
+       v
+    [1] ANCRAGE : entités reconnues -> graines            AML Watch (System)
+       |
+       v
+    [2] INTENTION : indices lexicaux -> relations utiles  « responsable » -> RESPONSIBLE_FOR,
+       |                                                  OWNS, PARTICIPATES_IN ; « outil »,
+       |                                                  « utilis » -> USES, DEPENDS_ON...
+       v
+    [3] SOUS-GRAPHE : relations visibles à 1 puis 2 sauts des graines
+       |
+       v
+    [4] PAGERANK PERSONNALISÉ : importance de chaque entité vue depuis les graines
+       |
+       v
+    [5] FAITS : relations classées (score PPR × confiance × bonus d'intention)
+    [6] PASSAGES : preuves des faits + passages mentionnant les entités importantes
+    [7] CHEMINS : chaînes de faits des graines vers les autres entités (explication)
+
+Étape 1 - ancrage. Le même module de reconnaissance d'entités qu'à l'ingestion (extraction/
+linker.py) est appliqué à la question. Un alias ambigu (« Sentinel ») produit les deux graines
+possibles, et l'ambiguïté est mémorisée pour être signalée dans la réponse.
+
+Étape 2 - intention. La liste INTENT_CUES associe des racines de mots à des types de relations :
+
+    (r"depend|affect|impact|indisponib|panne|tomb|interrupt", ["DEPENDS_ON"]),
+    (r"expert|expertise|competen|speciali|maitris|aider|tourner|connait", ["HAS_EXPERTISE"]),
+
+« indisponibilité de CoreNova » active DEPENDS_ON ; « vers qui me tourner » active HAS_EXPERTISE.
+Les relations de l'intention pèsent trois fois plus dans les étapes suivantes.
+
+Étape 3 - sous-graphe. Une seule requête Cypher récupère les relations à un saut des graines
+(level1), puis à un saut de ce premier voisinage (level2) :
+
+    MATCH (s:Entity) WHERE s.id IN $seeds
+    OPTIONAL MATCH (s)-[r]-(n:Entity) WHERE {visible}
+    WITH collect(DISTINCT r) AS level1, collect(DISTINCT n) AS frontier
+    CALL (frontier) {
+        UNWIND CASE WHEN $hops > 1 THEN frontier ELSE [] END AS f
+        MATCH (f)-[r]-(:Entity) WHERE {visible}
+        RETURN collect(DISTINCT r) AS level2
+    }
+    UNWIND level1 + level2 AS r
+    ...
+    ORDER BY s, rel, o
+
+  - `{visible}` : la relation doit être d'un type autorisé au parcours ET justifiée par au moins
+    un document autorisé (ou venir du référentiel). Les droits s'appliquent donc aussi au graphe.
+  - L'expansion « par niveaux » donne exactement l'ensemble des relations des chemins de longueur
+    au plus 2, sans énumérer les chemins un par un (ce qui exploserait combinatoirement) et sans
+    troncature arbitraire. C'est la version corrigée après le constat d'instabilité (section 13).
+  - Seules les preuves (passages, citations) issues de documents autorisés sont conservées dans
+    les faits exposés.
+
+
+8. LE PAGERANK PERSONNALISÉ EXPLIQUÉ SIMPLEMENT
+==============================================
+
+Imaginons un marcheur qui se déplace sur le sous-graphe. À chaque pas :
+
+  - avec la probabilité α = 0,15, il est « téléporté » sur une des graines (les entités de la
+    question) ;
+  - sinon (probabilité 0,85), il suit une relation au hasard, en préférant les relations de
+    poids élevé (confiance × 3 si la relation correspond à l'intention).
+
+Après un grand nombre de pas, la proportion de temps passé sur chaque entité mesure son
+importance VUE DEPUIS LES GRAINES. Une entité proche des graines, reliée par plusieurs chemins et
+par des relations utiles, obtient un score élevé. C'est le PageRank « personnalisé » : la
+téléportation ne se fait pas vers n'importe quel nœud, mais vers les graines.
+
+Le calcul (fonction personalized_pagerank) se fait par itérations successives :
+
+    p = restart.copy()
+    for _ in range(iterations):
+        p = alpha * restart + (1 - alpha) * (transition.T @ p)
+
+  - `restart` : vecteur qui vaut 1/nombre_de_graines sur les graines et 0 ailleurs ;
+  - `transition` : matrice des probabilités de passage d'une entité à une autre (poids des
+    relations normalisés par ligne ; le graphe est traité comme non orienté, car une dépendance
+    est utile dans les deux sens pour répondre) ;
+  - 40 itérations suffisent largement à la convergence sur des sous-graphes de cette taille.
+
+Les scores sont ARRONDIS (10 décimales) avant tout tri : deux entités à égalité mathématique ne
+doivent pas être départagées par un écart de calcul en virgule flottante qui dépend de l'ordre de
+sommation.
+
+    +------------------------------------------------------------------------------------+
+    | QUESTION DE JURY POSSIBLE                                                          |
+    | « Pourquoi α = 0,15 ? »                                                            |
+    | C'est la valeur classique du PageRank (facteur d'amortissement 0,85). Plus α est   |
+    | grand, plus le marcheur reste près des graines (exploration locale) ; plus il est  |
+    | petit, plus il s'éloigne. Nous ne l'avons pas optimisée, pour la même raison que k |
+    | dans la RRF : éviter de sur-ajuster des paramètres à 66 questions.                 |
+    +------------------------------------------------------------------------------------+
+
+
+9. DES FAITS ET DES PASSAGES CITABLES
+====================================
+
+Chaque relation du sous-graphe devient un FAIT avec un score :
+
+    fact.score = (ppr[sujet] + ppr[objet]) × bonus_intention × confiance
+
+Les 15 meilleurs faits sont retenus et numérotés F1, F2... Ils sont verbalisés en français grâce à
+l'ontologie (« AML Watch dépend de CoreNova ») et portent leurs documents sources et leurs
+citations. Dans une réponse, le marqueur [F2] renvoie donc à un fait ET à ses preuves.
+
+Les PASSAGES proposés par le graphe sont classés ainsi :
+
+  - chaque passage qui PROUVE un fait retenu reçoit le score de ce fait ;
+  - chaque passage qui MENTIONNE une des 12 entités les plus importantes reçoit 0,5 × la somme
+    de leurs scores PPR.
+
+Ce classement des passages par le graphe devient la troisième liste de la fusion RRF (« graph »),
+à côté de BM25 et des vecteurs.
+
+Enfin, les CHEMINS (fonction _paths) sont calculés par un parcours en largeur sur les faits
+retenus, des graines vers les autres entités (au plus 3 faits). Ils sont affichés dans la réponse
+(« DataLake Horizon dépend de CoreNova [F1] -> CrediScore dépend de DataLake Horizon [F10] ») et ne
+sont jamais reconstruits après coup : ce sont les chemins réellement parcourus.
+
+
+10. LE ROUTAGE SELON LE TYPE DE QUESTION
+=======================================
+
+Le graphe aide les questions relationnelles mais dégrade les questions factuelles (section 12).
+D'où un ROUTAGE : la fonction classify() (orchestration/classifier.py) détermine le type de
+question et règle le poids du graphe dans la fusion et la profondeur d'exploration.
+
+    Type          Détection (simplifiée)                          Poids graphe   Sauts
+    ------------  ----------------------------------------------  -------------  -----
+    ambiguous     alias ambigu, ou question très courte sans       1,0 (0,5 si    2 (1)
+                  entité                                            courte)
+    expert        « expert », « compétence », « vers qui »...       1,0            1
+    multi_hop     « d'un projet piloté par », « dont ... est »,     1,5            2
+                  « directement ou indirectement », >= 3 intentions
+    relational    entité reconnue + indice de relation              1,0            2
+    factual       tous les autres cas                               0,5            1
+
+La classification est DÉTERMINISTE (expressions régulières et entités reconnues) : rapide,
+gratuite, reproductible et explicable. Elle n'a pas besoin d'être parfaite puisqu'elle ne fait
+que moduler un poids. Mesure : accord de 0,878 avec la catégorie annotée sur les 41 questions
+dont la catégorie correspond à un type du classifieur.
+
+
+11. LES CINQ STRATÉGIES COMPARÉES
+================================
+
+La méthode Retriever.retrieve() (retrieval/retriever.py) est le point d'entrée unique :
+
+    Stratégie      Sources fusionnées                      Correspond à
+    -------------  --------------------------------------  ---------------------------------
+    vector         vecteurs seuls                          RAG classique
+    lexical        BM25 seul                               référence lexicale
+    hybrid         BM25 + vecteurs                         RAG hybride
+    graph          graphe seul                             GraphRAG
+    hybrid_graph   BM25 + vecteurs + graphe                hybride + graphe (poids fixe 1,0)
+    (auto)         hybrid_graph routé par classify()       architecture FINALE
+
+Toutes les stratégies reçoivent la même liste de documents autorisés, le même k (8 passages) et
+passent par le même workflow de réponse : seule la recherche change. C'est ce qui rend la
+comparaison équitable. Un dernier garde-fou vérifie, après la fusion, que chaque passage
+appartient bien à un document autorisé :
+
+    if d is None or d["doc_id"] not in set(allowed):
+        continue  # garde-fou : jamais de passage hors périmètre autorisé
+
+
+12. RÉSULTATS MESURÉS
+====================
+
+Source unique : RAG/CODE/evaluation/results/RESULTATS.md et retrieval_summary.json (configuration
+gelée, encodeur WordLlama, 55 questions ayant des documents de référence).
+
+12.1 Moyennes
+-------------
+
+    Stratégie                  Recall@5   MRR     nDCG@5   [IC 95 %]      Couverture preuves
+    -------------------------  --------   -----   ------   ------------   ------------------
+    Vectoriel                  0,751      0,836   0,720    [0,65 ; 0,79]  0,811
+    BM25                       0,874      0,888   0,831    [0,77 ; 0,88]  0,849
+    Hybride (BM25+vecteurs)    0,852      0,874   0,803    [0,74 ; 0,86]  0,868
+    Graphe seul                0,810      0,760   0,708    [0,63 ; 0,78]  0,651
+    Hybride + graphe (fixe)    0,854      0,875   0,813    [0,75 ; 0,87]  0,934
+    Hybride final (routé)      0,855      0,908   0,839    [0,78 ; 0,90]  0,943
+
+Aucune stratégie n'a laissé passer un document non autorisé (0 fuite).
+
+12.2 Par catégorie (nDCG@5)
+---------------------------
+
+    Catégorie (n)        Vect.  BM25   Hybr.  Graphe  Hyb+G  Final
+    -------------------  -----  -----  -----  ------  -----  -----
+    factuelle (13)       0,92   0,99   0,93   0,52    0,92   0,99
+    relationnelle (8)    0,81   0,81   0,86   0,96    0,86   0,86
+    multi-sauts (10)     0,55   0,62   0,63   0,66    0,73   0,71
+    multi-documents (7)  0,68   0,86   0,86   0,67    0,93   0,89
+    expertise (6)        0,67   0,89   0,85   0,97    0,98   0,97
+    ambiguë (4)          0,47   0,76   0,56   0,37    0,62   0,62
+
+Lecture :
+  - le graphe SEUL est excellent sur le relationnel (0,96) et l'expertise (0,97), mais très
+    mauvais sur le factuel (0,52) : il ne faut jamais l'utiliser seul ;
+  - BM25 est la meilleure stratégie simple sur ce corpus : il dépasse même l'hybride. Cela
+    s'explique par la faiblesse relative de l'encodeur vectoriel hors-ligne et par la présence
+    de nombreux termes exacts (sigles, références) dans les questions bancaires ;
+  - l'architecture finale n'est mauvaise nulle part : 0,99 sur le factuel grâce au routage,
+    0,97 sur l'expertise et 0,71 sur le multi-sauts grâce au graphe. Sur le relationnel, elle
+    n'est pas meilleure que l'hybride (0,86 dans les deux cas) : la fusion dilue une partie de
+    l'avantage du graphe seul ;
+  - les effectifs par catégorie sont petits (4 à 13 questions) : ce sont des tendances.
+
+12.3 L'effet décisif de l'encodeur
+----------------------------------
+
+    nDCG@5            spaCy (300 d)   WordLlama (256 d)
+    ----------------  -------------   -----------------
+    Vectoriel         0,409           0,720
+    Hybride           0,680           0,803
+    Hybride final     0,766           0,839
+
+Avec un encodeur faible, la fusion avec BM25 DÉGRADE BM25 (0,680 < 0,831) : le bruit des vecteurs
+pollue le bon classement lexical. L'intérêt d'une recherche hybride dépend donc directement de la
+qualité de l'encodeur. Avec un encodeur neuronal moderne, on peut s'attendre à ce que l'hybride
+dépasse BM25, mais CELA N'A PAS ÉTÉ MESURÉ ici.
+
+
+13. DÉTERMINISME : UN DÉTAIL QUI COMPTE
+======================================
+
+Pendant le projet, deux campagnes d'évaluation identiques, séparées par une réingestion complète,
+ont donné des résultats différents pour GraphRAG (exactitude 0,561 puis 0,530). Cause : plusieurs
+requêtes renvoyaient des résultats ex æquo dans un ordre non garanti (LIMIT sans ORDER BY, tri sans
+départage, énumération de chemins tronquée).
+
+Corrections appliquées partout :
+  - ORDER BY avant chaque LIMIT, avec l'identifiant comme départage ;
+  - expansion du sous-graphe par niveaux, sans troncature ;
+  - scores arrondis avant tri ;
+  - tri des nœuds avant le calcul du PageRank.
+
+Contrôle : deux campagnes séparées par une réingestion complète donnent maintenant 0 différence sur
+1 056 lignes de résultats (python -m evaluation.compare_runs). Toutes les campagnes ont été
+relancées sur le code corrigé. Pour un système destiné à l'audit, la reproductibilité n'est pas un
+luxe : une réponse doit pouvoir être expliquée et rejouée.
+
+
+14. LIMITES ET QUESTIONS DE JURY
+===============================
+
+Limites :
+  - encodeurs légers hors-ligne : les conclusions sur l'hybride en dépendent ;
+  - intention et routage par indices lexicaux : sensibles aux formulations inattendues ;
+  - GraphRAG local seulement : pas de questions de synthèse globale (résumés de communautés) ;
+  - corpus et questions synthétiques, petits effectifs par catégorie.
+
+    +------------------------------------------------------------------------------------+
+    | « Pourquoi ne pas simplement utiliser BM25, puisqu'il est le meilleur ? »          |
+    | Parce qu'il est le meilleur EN MOYENNE et sur ce corpus. Il est moins bon que le   |
+    | graphe sur l'expertise et le multi-sauts, et ne fournit ni faits ni chemins pour   |
+    | expliquer une réponse relationnelle. L'architecture finale garde BM25 au cœur de   |
+    | la fusion et ajoute le graphe là où il apporte quelque chose.                      |
+    +------------------------------------------------------------------------------------+
+
+    +------------------------------------------------------------------------------------+
+    | « Votre GraphRAG est-il celui de Microsoft ? »                                     |
+    | Non. Le GraphRAG de Microsoft (Edge et al., 2024) construit le graphe avec un LLM  |
+    | et répond aux questions globales par des résumés de communautés. Notre approche    |
+    | est un GraphRAG LOCAL : graphe construit par règles (et LLM optionnel), ancrage    |
+    | des entités de la question, sous-graphe et PageRank personnalisé, à la manière de  |
+    | HippoRAG. Les résumés de communautés sont une perspective, qui exige un LLM.       |
+    +------------------------------------------------------------------------------------+
