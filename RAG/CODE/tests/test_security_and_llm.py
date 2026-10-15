@@ -158,3 +158,8 @@ def test_anthropic_adapter_without_fallbacks_and_refusal():
     assert client.messages.kwargs is not None and client.beta.messages.kwargs is None
     with pytest.raises(LLMRefusal):
         AnthropicLLM(_settings(llm_provider="anthropic"), client=_fake_anthropic("refusal", "")).complete("s", "u")
+
+
+def test_anthropic_adapter_requires_explicit_model():
+    with pytest.raises(LLMError):
+        AnthropicLLM(_settings(llm_provider="anthropic", llm_model=""), client=_fake_anthropic())

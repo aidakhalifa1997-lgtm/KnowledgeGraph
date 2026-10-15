@@ -140,7 +140,10 @@ class AnthropicLLM:
 
         self._anthropic = anthropic
         self._settings = settings
-        self.model = settings.llm_model or "claude-opus-5-5"
+        if not settings.llm_model:
+            # Le modèle est choisi explicitement avec la clé : aucun identifiant n'est codé en dur.
+            raise LLMError("LLM_MODEL est obligatoire pour anthropic.")
+        self.model = settings.llm_model
         kwargs = {"api_key": settings.llm_api_key.get_secret_value(), "timeout": settings.llm_timeout_seconds,
                   "max_retries": 3}
         if settings.llm_base_url:
