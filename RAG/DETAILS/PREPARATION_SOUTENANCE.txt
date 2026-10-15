@@ -39,26 +39,28 @@ SOMMAIRE
     N°   Diapositive                              Durée   Idée clé
     ---  ---------------------------------------  ------  ------------------------------------------
     1    Titre                                    0:30    se présenter, double profil orga + data
-    2    Contexte : la connaissance dispersée     1:30    dispersion, versions, diffusion, experts
-    3    Problématique et questions               1:30    QR1-QR5 / H1-H5
-    4    Démarche                                 1:00    corpus synthétique, conception-évaluation
-    5    Architecture                             1:30    six couches ; le LLM est optionnel
-    6    Du document au graphe                    1:30    ingestion prudente ; provenance
-    7    Recherche hybride et GraphRAG            1:30    trois sources, RRF, routage
-    8    Workflow de réponse                      1:30    suffisance, abstention, vérification
-    9    Sécurité et contrôle d'accès             1:00    filtrer avant de chercher ; injection
-    10   Démonstration (captures ou direct)       2:30    relationnel, contradiction, droits
-    11   Protocole d'évaluation                   1:00    partitions, gel, 17 + 49 questions
-    12   Résultats : recherche                    1:00    final 0,839 ; BM25 très fort ; encodeur
-    13   Résultats : réponses et fiabilité        1:30    0,742 / 0,694 ; 0 fuite ; abstention
-    14   Experts et recommandations               0:45    H4 non démontrée ; H5 validée
-    15   Discussion des hypothèses                1:00    tableau H1-H5
-    16   Gouvernance et déploiement en banque     1:00    RACI, contrôles, trajectoire
-    17   Limites et perspectives                  1:00    LLM, encodeur, documents réels
-    18   Conclusion                               0:30    les trois messages
+    2    Une connaissance difficile à mobiliser   1:00    dispersion, versions, diffusion, experts
+    3    Problématique et questions               1:00    QR1-QR5
+    4    Démarche : banc d'essai synthétique      1:00    35 documents, 66 questions, pièges
+    5    Architecture                             1:00    six couches ; le LLM est optionnel
+    6    Du document au graphe                    1:00    ingestion prudente ; provenance
+    7    Trois sources, fusion et routage         1:00    BM25, vecteurs, graphe, RRF
+    8    Workflow de réponse                      1:00    suffisance, relance, vérification
+    9    Sécurité : filtrer avant de chercher     1:00    même question, deux comptes
+    10   Démonstration                            1:30    relationnel, contradiction (ou direct)
+    11   Explorateur, experts, recommandations    0:45    les autres fonctions
+    12   Protocole d'évaluation                   1:00    partitions, gel, 17 + 49 questions
+    13   Résultats : recherche                    1:00    final 0,839 ; BM25 très proche ; encodeur
+    14   Résultats : réponses                     1:15    0,742 / 0,694 ; 0,12 -> 0,62
+    15   Fiabilité et abstention                  1:00    0 invention, 0 fuite ; 18 % abusives
+    16   Experts et recommandations               0:45    H4 non démontrée ; H5 validée
+    17   Bilan des hypothèses                     0:45    tableau H1-H5
+    18   Gouvernance et déploiement en banque     1:00    trajectoire, rôles, contrôles
+    19   Limites et perspectives                  1:00    LLM, encodeur, documents réels
+    20   Conclusion                               0:30    les trois messages
 
-Conseil : répéter à voix haute avec un chronomètre ; couper dans les diapositives 6 à 8 si le
-temps manque, jamais dans les résultats ni dans les limites.
+Conseil : répéter à voix haute avec un chronomètre ; couper dans les diapositives 6 à 8 et 11 si
+le temps manque, jamais dans les résultats ni dans les limites.
 
 
 3. SCRIPT DE LA DÉMONSTRATION
