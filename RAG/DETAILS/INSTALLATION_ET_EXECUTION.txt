@@ -253,8 +253,9 @@ Précautions :
     POST {LLM_BASE_URL}/chat/completions : à vérifier dans sa documentation, ne jamais le supposer ;
   - avec Anthropic, le repli côté serveur vers un modèle de secours est activé par défaut
     (LLM_ANTHROPIC_FALLBACKS=true) ; LLM_EFFORT règle la profondeur de raisonnement ;
-  - LLM_EXTRACTION_ENABLED=true active aussi l'extraction de relations par LLM à l'ingestion
-    (puis `python -m scripts.ingest --use-llm`) ;
+  - LLM_EXTRACTION_ENABLED=true active aussi, par défaut, l'extraction de relations par LLM à
+    l'ingestion (script, bouton d'ingestion et dépôt de fichier) ; sans cette variable, l'option
+    `python -m scripts.ingest --use-llm` l'active pour une passe ;
   - les documents et questions sont alors ENVOYÉS au fournisseur : vérifier que la classification
     des données le permet ;
   - une clé qui aurait été communiquée en clair (message, courriel, fichier) doit être considérée

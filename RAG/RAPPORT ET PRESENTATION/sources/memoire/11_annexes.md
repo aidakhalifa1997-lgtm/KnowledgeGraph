@@ -207,6 +207,7 @@ Le journal complet figure dans `CODE/evaluation/JOURNAL_DEVELOPPEMENT.md`. Il di
 | avant gel | ingestion | report des durées d'encodage et d'écriture dans le rapport | mesure incomplète |
 | avant gel | configuration | encodeur par défaut WordLlama au lieu de spaCy, puis gel | ablation sur le développement |
 | post-gel | fusion des classements | garantie d'un passage par source dans la fusion RRF | Q62, développement |
+| post-gel | sécurité | refus par défaut sans diffusion déclarée ; classement d'experts réservé aux managers dans l'assistant | revue de code, sans effet sur les mesures |
 | post-gel | requêtes du graphe | correction de reproductibilité : tris complets et expansion par niveaux | variation entre deux campagnes |
 
 Table: Journal des modifications avant et après le gel

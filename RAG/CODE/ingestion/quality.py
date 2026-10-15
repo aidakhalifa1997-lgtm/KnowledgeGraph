@@ -17,9 +17,16 @@ OCR_ERROR = 45.0
 
 
 def assess_quality(text: str, *, ocr_confidence: float | None, reference: str | None, doc_date, author: str | None,
-                   department: str | None) -> tuple[float, list[QualityIssue], str]:
+                   department: str | None, diffusion_declared: bool = True) -> tuple[float, list[QualityIssue], str]:
     issues: list[QualityIssue] = []
     stripped = text.strip()
+
+    # Refus par défaut : sans ligne « Diffusion » dans le cartouche, on ne sait pas à qui le document
+    # peut être montré. Il n'est donc pas publié (et non diffusé à tous par défaut).
+    if not diffusion_declared:
+        issues.append(QualityIssue(code="missing_diffusion", severity="error",
+                                   message="diffusion non déclarée dans le cartouche : document non publié "
+                                           "(refus par défaut), à corriger par son propriétaire"))
 
     if len(stripped) < MIN_CHARS:
         issues.append(QualityIssue(code="text_too_short", severity="error",

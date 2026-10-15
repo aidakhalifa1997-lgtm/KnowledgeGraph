@@ -26,7 +26,7 @@ Compose ; aucun déploiement distant réalisé ; aucune mesure avec un vrai LLM 
     Assemblage des composants                 CODE/services.py
     Scripts (ingestion, utilisateurs,         CODE/scripts/
     campagne, sauvegarde, restauration)
-    Tests (103 cas)                           CODE/tests/
+    Tests (106 cas)                           CODE/tests/
     Conteneurs et exploitation                docker-compose.yml, docker-compose.debug.yml,
                                               docker-compose.prod.yml, CODE/Dockerfile,
                                               CODE/frontend/Dockerfile, CODE/deploy/Caddyfile,

@@ -33,7 +33,7 @@ def main() -> None:
     services.ensure_schema()
     if args.use_llm and not services.settings.llm_enabled:
         raise SystemExit("--use-llm demandé mais aucun fournisseur LLM n'est configuré (LLM_PROVIDER / LLM_API_KEY).")
-    report = services.pipeline.sync_directory(args.dir, delete_missing=not args.no_delete, use_llm=args.use_llm)
+    report = services.pipeline.sync_directory(args.dir, delete_missing=not args.no_delete, use_llm=True if args.use_llm else None)
     summary = {
         "run_id": report.run_id, "duration_seconds": report.duration_seconds, "files_seen": report.files_seen,
         **{k: report.count(k) for k in ("ingested", "updated", "unchanged", "duplicate", "quarantined", "rejected", "error")},

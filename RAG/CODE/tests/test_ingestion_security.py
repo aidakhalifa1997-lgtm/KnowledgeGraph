@@ -70,3 +70,24 @@ def test_minhash_detects_near_duplicates():
     assert estimated_jaccard(minhash_signature(base), minhash_signature(other)) < 0.2
     assert exact_jaccard(base, near) > 0.8
     assert sha256_file(b"a") != sha256_file(b"b")
+
+
+def test_missing_diffusion_is_a_blocking_error():
+    from ingestion.quality import assess_quality
+
+    text = "La présente procédure décrit les contrôles de conformité applicables aux dossiers clients. " * 3
+    kwargs = {"ocr_confidence": None, "reference": "PRC-X-001", "doc_date": "2026-01-01", "author": "A", "department": "B"}
+    _, issues, _ = assess_quality(text, diffusion_declared=False, **kwargs)
+    assert any(i.code == "missing_diffusion" and i.severity == "error" for i in issues)
+    _, issues, _ = assess_quality(text, **kwargs)
+    assert not any(i.code == "missing_diffusion" for i in issues)
+
+
+def test_llm_extraction_setting_is_the_default_for_ingestion():
+    from core.settings import Settings
+    from ingestion.pipeline import IngestionPipeline
+
+    on = IngestionPipeline(Settings(app_secret_key="x" * 40, llm_extraction_enabled=True), None, None, None)
+    off = IngestionPipeline(Settings(app_secret_key="x" * 40, llm_extraction_enabled=False), None, None, None)
+    assert on._use_llm(None) is True and off._use_llm(None) is False
+    assert on._use_llm(False) is False and off._use_llm(True) is True

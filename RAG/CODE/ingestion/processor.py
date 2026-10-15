@@ -121,7 +121,8 @@ class DocumentProcessor:
         department = self.linker.resolver.resolve(meta.department_name, "Department") if meta.department_name else None
         quality, issues, language = assess_quality(text, ocr_confidence=raw.ocr_confidence, reference=meta.reference,
                                                    doc_date=meta.doc_date, author=meta.author_name,
-                                                   department=meta.department_name)
+                                                   department=meta.department_name,
+                                                   diffusion_declared="diffusion" in meta.found_in_cartouche)
         injection = detect_prompt_injection(text)
         status = "active"
         if any(i.severity == "error" for i in issues):

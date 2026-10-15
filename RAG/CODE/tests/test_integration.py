@@ -111,6 +111,18 @@ def test_document_lifecycle(integration_services, tmp_path):
     assert pipeline.ingest_file(short).outcome == "rejected"
     pipeline.delete(did(short.name))
 
+    # Refus par défaut : un document sans ligne « Diffusion » n'est pas publié.
+    undeclared = tmp_path / "sans_diffusion.txt"
+    undeclared.write_text("\n".join([
+        "ORIZIA BANQUE — document fictif", "Référence : PRC-TST-098", "Version : 1.0", "Date : 01/02/2026",
+        "Direction propriétaire : Direction Conformité", "Rédacteur : Salma Idrissi", "Classification : Interne",
+        "=" * 40, "", "# Procédure sans diffusion déclarée", "", "Le responsable de la conformité vérifie chaque mois "
+        "l'exhaustivité des dossiers traités et consigne les anomalies relevées dans le registre prévu à cet effet."]),
+        encoding="utf-8")
+    result = pipeline.ingest_file(undeclared)
+    assert result.outcome == "rejected" and "diffusion" in result.message
+    pipeline.delete(did(undeclared.name))
+
     v1 = write("PRC-TST-099_v1.0_test.txt", "1.0", "La procédure de test s'appuie sur AML Watch pour le filtrage.")
     assert pipeline.ingest_file(v1).outcome == "ingested"
     assert pipeline.ingest_file(v1).outcome == "unchanged"
@@ -265,6 +277,14 @@ def test_expert_ranking_and_access(integration_services):
     collab_allowed = set(integration_services.access.allowed_doc_ids(COLLAB))
     for expert in experts.find_experts(domain, list(collab_allowed)):
         assert all(e.doc_id in collab_allowed for e in expert.evidence)
+
+
+def test_assistant_expert_ranking_requires_manager_role(integration_services):
+    question = "Qui sont les experts en lutte anti-blanchiment ?"
+    manager = AccessContext("manager.conformite", frozenset({"ALL", "DCONF"}), frozenset({"manager"}))
+    viewer = AccessContext("analyste.conformite", frozenset({"ALL", "DCONF"}), frozenset({"viewer"}))
+    assert integration_services.workflow.run(question, manager)["experts"]
+    assert integration_services.workflow.run(question, viewer)["experts"] == []
 
 
 def test_recommendations_exclude_hidden_and_unauthorized(integration_services):

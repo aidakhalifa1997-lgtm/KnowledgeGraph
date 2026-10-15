@@ -50,7 +50,8 @@ violer une règle de sécurité sur un cas. Il faut les deux.
     Fichier                          Cas   Contenu
     -------------------------------  ----  ----------------------------------------------------
     test_text_and_cleaning.py        11    normalisation, nettoyage, métadonnées, découpage
-    test_ingestion_security.py        8    validation des fichiers, injection, MinHash
+    test_ingestion_security.py       10    validation des fichiers, injection, MinHash, refus
+                                           par défaut de la diffusion, réglage de l'extraction LLM
     test_extraction.py               10    règles, résolution d'entités, fusion, extracteur LLM
                                            simulé (preuve absente, ontologie violée...)
     test_retrieval_units.py           8    RRF, garantie par source, PageRank personnalisé,
@@ -59,15 +60,16 @@ violer une règle de sécurité sur un cas. Il faut les deux.
                                            vérification et assainissement
     test_security_and_llm.py         14    mots de passe, rôles, jetons, limitation de débit,
                                            masquage des secrets, adaptateurs LLM simulés
-    test_integration.py              23    sur une vraie base Neo4j : ingestion du corpus,
+    test_integration.py              24    sur une vraie base Neo4j : ingestion du corpus,
                                            idempotence, cycle de vie, versions, droits,
-                                           workflow complet, experts, recommandations
+                                           workflow complet, experts (rôle manager exigé),
+                                           recommandations
     test_api.py                      13    API de bout en bout : authentification, rôles,
                                            filtrage par droits, erreurs, champs internes cachés
     -------------------------------  ----
-    Total                            103   (99 fonctions de test, certaines paramétrées)
+    Total                            106   (101 fonctions de test, certaines paramétrées)
 
-Les 67 tests UNITAIRES n'ont besoin ni de base de données, ni de réseau, ni de clé d'API. Les 36
+Les 69 tests UNITAIRES n'ont besoin ni de base de données, ni de réseau, ni de clé d'API. Les 37
 tests d'INTÉGRATION et d'API (marqueur pytest « integration ») s'exécutent sur une base Neo4j
 dédiée.
 
@@ -92,7 +94,7 @@ par erreur, le test échouerait.
 Pour CHAQUE stratégie de recherche (vector, lexical, hybrid, graph, hybrid_graph), le test
 interroge la base au nom d'un utilisateur sans accès à certains documents et vérifie qu'aucun
 passage de ces documents n'est renvoyé. La paramétrisation (@pytest.mark.parametrize) exécute le
-même test cinq fois : c'est ce qui explique que 99 fonctions produisent 103 cas.
+même test cinq fois : c'est ce qui explique que 101 fonctions produisent 106 cas.
 
 2.4 La fixture d'intégration
 ----------------------------
@@ -388,6 +390,18 @@ architecture, la catégorie, le groupe (développement ou non), le statut, la co
 groupes de mots-clés trouvés, les documents cités, les fuites, l'usage de la relance, la latence
 et le début de la réponse. C'est en les lisant que les causes d'erreur (paraphrases, mot outil
 manquant, chaîne multi-sauts incomplète) ont été identifiées.
+
+
+9 bis. AUDIT COMPLÉMENTAIRE DU CONTRÔLE D'ACCÈS
+==============================================
+
+Dans la campagne principale, 62 des 66 questions sont posées avec le compte administrateur : le
+« 0 fuite » ne teste donc vraiment les droits que sur les questions de la catégorie « accès ».
+L'audit evaluation/access_audit.py rejoue les 66 questions avec trois comptes restreints
+(collaborateur : ALL ; analyste.conformite : ALL et DCONF ; ingenieur.dsi : ALL et DSI) et pour les
+cinq architectures, soit 990 réponses. Il vérifie les passages cités, les faits du graphe et les
+preuves d'expertise. Résultat : 0 fuite, et aucun classement d'experts servi à un compte sans le
+rôle manager (results/audit_acces/access_audit.json).
 
 
 10. REPRODUCTIBILITÉ

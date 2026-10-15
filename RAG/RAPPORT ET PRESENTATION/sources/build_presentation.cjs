@@ -330,12 +330,14 @@ async function build() {
   text(s, [{ text: "Compte « ingenieur.dsi » : ", options: { bold: true } }, { text: "« RTO : 4 heures », avec sa source" }],
     { x: MX + cw + 0.3, y: 1.6 + ch, w: cw, h: 0.55, fontSize: 14 });
   card(s, MX, 6.05, W - 2 * MX, 0.6, "bandeau sécurité", C.background2);
-  text(s, "0 fuite d'accès sur toutes les stratégies · mémo piégé mis en quarantaine dès l'ingestion · requêtes Cypher paramétrées",
+  text(s, "0 fuite sur 990 réponses rejouées avec 3 comptes restreints · mémo piégé en quarantaine · diffusion absente = refus",
     { x: MX + 0.25, y: 6.05, w: W - 2 * MX - 0.5, h: 0.6, fontSize: 15, bold: true, color: C.accent2, valign: "middle" });
   s.addNotes("La même question, « Quel est le RTO de CoreNova ? », donne deux résultats selon le compte. Le collaborateur " +
     "n'est pas destinataire du plan de continuité : la plateforme s'abstient, sans même révéler que le document existe. " +
     "L'ingénieur de la DSI obtient la valeur et sa source. C'est possible parce que la liste des documents autorisés est " +
-    "calculée avant la recherche et passée à chaque requête. Résultat mesuré : aucune fuite, quelle que soit la stratégie.");
+    "calculée avant la recherche et passée à chaque requête. Un audit dédié rejoue les 66 questions avec trois comptes " +
+    "restreints et les cinq architectures : 990 réponses, aucune fuite. Et un document dont la diffusion n'est pas déclarée " +
+    "est refusé par défaut.");
 
   // 10. Démonstration ---------------------------------------------------------------------------------
   s = slideFor("CONTENU", "La solution");

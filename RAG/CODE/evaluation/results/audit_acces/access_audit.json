@@ -1,0 +1,19 @@
+{
+  "accounts": [
+    "collaborateur",
+    "analyste.conformite",
+    "ingenieur.dsi"
+  ],
+  "architectures": [
+    "rag_vectoriel",
+    "rag_hybride",
+    "graphrag",
+    "hybride_graphe_fixe",
+    "hybride_final"
+  ],
+  "questions": 66,
+  "runs": 990,
+  "runs_with_leak": 0,
+  "leaks": [],
+  "runs_with_expert_ranking_for_viewers": 0
+}

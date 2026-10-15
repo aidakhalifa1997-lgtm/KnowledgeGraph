@@ -140,7 +140,8 @@ class QAWorkflow:
         sufficiency = assess(state["question"], texts, seed_surfaces, self.stats, self.settings.sufficiency_threshold)
         conflicts = detect_conflicts(state["question"], retrieval.chunks)
         experts: list = []
-        if state["route"].question_type == "expert":
+        # Le classement de personnes est réservé au rôle manager, comme la page Experts (GET /api/experts).
+        if state["route"].question_type == "expert" and state["access"].can("manager"):
             domain = self.experts.resolve_domain(state["question"])
             if domain:
                 experts = [

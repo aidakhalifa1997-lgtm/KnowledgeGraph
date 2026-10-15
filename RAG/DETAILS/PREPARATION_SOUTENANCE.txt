@@ -113,7 +113,8 @@ s'attarder.
   Experts          nDCG@3 0,975 contre 0,911, p = 0,375
   Recommandations  nDCG@5 0,908 contre 0,648, p = 0,004
   Extraction       F1 0,984 (dév.) / 0,830 (test), rappel test 0,717 ; résolution 34/34
-  Tests            103 cas (67 unitaires, 36 intégration)
+  Tests            106 cas (69 unitaires, 37 intégration)
+  Audit d'accès    990 réponses avec 3 comptes restreints, 0 fuite
   Reproductibilité 0 différence sur 1 056 lignes
 
 

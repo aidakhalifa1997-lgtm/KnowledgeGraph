@@ -55,7 +55,12 @@ class IngestionPipeline:
         self.embedder = embedder
 
     # ------------------------------------------------------------------
-    def ingest_file(self, path: Path, *, use_llm: bool = False) -> DocumentIngestionResult:
+    def _use_llm(self, use_llm: bool | None) -> bool:
+        """Extraction LLM : choix explicite de l'appelant, sinon LLM_EXTRACTION_ENABLED (sans effet
+        si aucun fournisseur LLM n'est configuré)."""
+        return self.settings.llm_extraction_enabled if use_llm is None else use_llm
+
+    def ingest_file(self, path: Path, *, use_llm: bool | None = None) -> DocumentIngestionResult:
         doc_id = document_id_for(path.name)
         try:
             data = path.read_bytes()
@@ -67,7 +72,7 @@ class IngestionPipeline:
             return DocumentIngestionResult(file_name=path.name, doc_id=doc_id, outcome="unchanged",
                                            status=state["status"])
         try:
-            processed = self.processor.process(path, use_llm=use_llm)
+            processed = self.processor.process(path, use_llm=self._use_llm(use_llm))
         except FileRejected as exc:
             logger.warning("Fichier refusé", extra={"file": path.name, "reason": str(exc)})
             return DocumentIngestionResult(file_name=path.name, doc_id=doc_id, outcome="rejected", status="rejected",
@@ -158,7 +163,7 @@ class IngestionPipeline:
         self.repo.cleanup_orphans()
 
     def sync_directory(self, directory: str | Path | None = None, *, delete_missing: bool = True,
-                       use_llm: bool = False) -> IngestionReport:
+                       use_llm: bool | None = None) -> IngestionReport:
         directory = Path(directory or self.settings.documents_dir).resolve()
         started = time.perf_counter()
         report = IngestionReport(run_id=f"run-{uuid.uuid4().hex[:10]}",

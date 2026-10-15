@@ -259,9 +259,12 @@ question de développement Q57).
 7.4 Cas particulier : les questions d'expertise
 -----------------------------------------------
 
-Pour une question de type « expert », le nœud appelle aussi le service de recherche d'experts
+Pour une question de type « expert », et seulement si l'utilisateur a le rôle manager (comme pour
+la page Experts), le nœud appelle aussi le service de recherche d'experts
 (expert_discovery/service.py). Si des experts sont trouvés avec des preuves dans le graphe, le
-contexte est jugé suffisant même si la couverture lexicale est faible.
+contexte est jugé suffisant même si la couverture lexicale est faible. Un simple « viewer » reçoit
+une réponse documentaire ordinaire, sans classement de personnes : classer des collaborateurs est
+un traitement de données personnelles réservé à l'encadrement.
 
 
 8. NŒUD expand : UNE SECONDE CHANCE, UNE SEULE

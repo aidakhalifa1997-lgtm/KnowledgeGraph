@@ -52,7 +52,8 @@ Configuration gelée, encodeur WordLlama, générateur extractif hors-ligne. Sou
 | Abstention (final) | rappel 0,909 ; 18 % d'abstentions abusives |
 | Experts / recommandations | nDCG@3 0,975 vs 0,911 (non significatif) ; nDCG@5 0,908 vs 0,648 (p = 0,004) |
 | Extraction par règles | F1 0,984 (documents de mise au point) ; 0,830 (documents de test) |
-| Tests | 103 cas (67 unitaires, 36 d'intégration) |
+| Tests | 106 cas (69 unitaires, 37 d'intégration) |
+| Audit d'accès | 990 réponses rejouées avec 3 comptes restreints, 0 fuite |
 
 Limites détaillées dans le mémoire (chapitre 6) et dans [`DETAILS/TESTS_ET_EVALUATION.txt`](DETAILS/TESTS_ET_EVALUATION.txt).
 

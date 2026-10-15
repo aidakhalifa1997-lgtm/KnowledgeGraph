@@ -254,6 +254,8 @@ Chaque contrôle produit un constat (QualityIssue) de gravité info, warning ou 
 
     Code                 Gravité   Condition
     -------------------  --------  ------------------------------------------------------
+    missing_diffusion    error     aucune ligne « Diffusion » dans le cartouche (refus par défaut :
+                                   un document dont on ignore la diffusion n'est pas publié)
     text_too_short       error     moins de 150 caractères extraits
     ocr_unreadable       error     confiance OCR moyenne < 45
     ocr_low_confidence   warning   confiance OCR moyenne < 70

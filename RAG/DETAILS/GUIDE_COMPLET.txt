@@ -152,7 +152,7 @@ requête. Un document non autorisé n'entre jamais dans la chaîne de traitement
     Interface       React + Cytoscape : 6 pages                         frontend/
     Exploitation    Docker Compose, HTTPS (Caddy), sauvegarde/          ../docker-compose*.yml,
                     restauration, CI                                    scripts/ops/
-    Qualité         103 cas de test (67 unitaires, 36 d'intégration)    tests/
+    Qualité         106 cas de test (69 unitaires, 37 d'intégration)    tests/
     Évaluation      banc d'essai, 5 architectures, statistiques         evaluation/
 
 

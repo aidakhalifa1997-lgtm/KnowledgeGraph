@@ -90,6 +90,8 @@ On remarque aussi que le RAG vectoriel fait mieux que le RAG hybride en exactitu
 
 Sur les 330 réponses produites par les cinq architectures, aucune ne contient de citation invalide, aucune ne contient de chaîne interdite et aucune n'expose d'information issue d'un document non autorisé. Le premier résultat découle du générateur extractif, qui ne peut citer qu'un passage effectivement présent ; les deux autres valident le contrôle d'accès appliqué en amont de la recherche et la mise en quarantaine du mémo piégé.
 
+Cette dernière mesure appelle une réserve : dans la campagne principale, 62 des 66 questions sont posées avec le compte administrateur, qui voit tous les documents. Nous avons donc conduit un audit complémentaire, qui rejoue les 66 questions avec trois comptes restreints (diffusion générale seule, Conformité, DSI) et pour les cinq architectures, soit 990 réponses. Aucune ne contient de passage, de fait du graphe ou de preuve d'expertise issu d'un document non autorisé.
+
 Pour l'architecture finale, 93 % des phrases des réponses sont appuyées par les sources qu'elles citent, et 96 % des réponses citent au moins un document indispensable. La précision des citations, part des documents cités qui font partie des documents de référence, est plus modeste (0,59) : les réponses citent aussi des documents connexes, pertinents pour le lecteur mais absents de nos annotations.
 
 ### Abstention, contradictions et ambiguïtés

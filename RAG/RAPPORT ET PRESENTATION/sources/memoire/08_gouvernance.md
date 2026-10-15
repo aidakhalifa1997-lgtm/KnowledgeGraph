@@ -58,7 +58,7 @@ Le prototype gère déjà une partie du cycle de vie d'un document. À l'ingesti
 | actif | document intégré au graphe et interrogeable | revue périodique par le propriétaire |
 | remplacé | version antérieure liée à la nouvelle par SUPERSEDES | archivage après délai de conservation |
 | doublon | copie exacte ou quasi identique d'un document canonique | suppression de la copie à la source |
-| rejeté | document illisible ou sans contenu exploitable | correction par le propriétaire |
+| rejeté | document illisible, sans contenu exploitable ou sans diffusion déclarée | correction par le propriétaire |
 | quarantaine | instructions destinées à un assistant détectées | analyse sécurité, puis décision |
 
 Table: Statuts documentaires et actions de gouvernance proposées
@@ -85,7 +85,7 @@ Nous avons construit une matrice des risques et des contrôles selon la logique 
 | Risque | Cause principale | Contrôle existant | Contrôle proposé |
 |---|---|---|---|
 | Réponse inexacte | passage mal choisi, synthèse erronée | citations vérifiées, appui lexical, abstention | revue mensuelle d'un échantillon de réponses |
-| Fuite d'information restreinte | droits mal appliqués | filtrage avant recherche, tests d'accès | recertification des groupes, tests de non-régression |
+| Fuite d'information restreinte | droits mal appliqués | filtrage avant recherche, refus par défaut sans diffusion déclarée, audit d'accès | recertification des groupes, tests de non-régression |
 | Information obsolète | version ancienne non retirée | versions liées, conflits signalés | alerte de revue périodique par document |
 | Injection de prompt | instruction cachée dans un document | détection et quarantaine, assainissement | revue humaine de la quarantaine, tests d'intrusion |
 | Fait erroné dans le graphe | erreur d'extraction ou de résolution | provenance, confiance, entités candidates | contrôle par échantillonnage des relations |
