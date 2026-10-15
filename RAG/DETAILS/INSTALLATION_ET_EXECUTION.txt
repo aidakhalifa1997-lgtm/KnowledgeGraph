@@ -1,0 +1,344 @@
+====================================================================================================
+                                 INSTALLATION ET EXÉCUTION DE LA PLATEFORME
+====================================================================================================
+
+Objectif : installer la plateforme, charger le corpus de démonstration, se connecter, poser ses
+premières questions, puis lancer les tests et l'évaluation. Deux voies sont décrites :
+
+  - VOIE A (recommandée) : Docker Compose. Tout est dans des conteneurs ; une seule commande.
+  - VOIE B : installation locale pour le développement (Python, Node, Neo4j).
+
+Toutes les commandes ont été exécutées dans l'environnement de développement du projet.
+Les chemins sont relatifs à la racine du dépôt, sauf mention contraire.
+
+SOMMAIRE
+--------
+  1. Prérequis
+  2. Voie A : Docker Compose (recommandée)
+  3. Voie B : installation locale de développement
+  4. Se connecter : comptes de démonstration
+  5. Parcours de démonstration (dix minutes)
+  6. Configurer un LLM (optionnel)
+  7. Lancer les tests
+  8. Reproduire l'évaluation
+  9. Commandes utiles (Makefile)
+ 10. Dépannage
+
+
+1. PRÉREQUIS
+===========
+
+  Voie A (Docker)
+    - Docker Engine 24 ou plus récent et le plugin Docker Compose v2 (commande `docker compose`)
+    - 4 Go de mémoire disponibles (Neo4j est configuré avec 1 Go de tas et 512 Mo de cache)
+    - environ 3 Go d'espace disque pour les images
+    - accès réseau aux registres d'images et aux dépôts de paquets lors de la PREMIÈRE
+      construction (ensuite, aucun téléchargement n'est nécessaire au démarrage)
+
+  Voie B (local)
+    - Python 3.12 ou 3.13
+    - Node.js 22 et npm
+    - Tesseract OCR avec les modèles français et anglais
+      (Ubuntu : sudo apt install tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng)
+    - une base Neo4j 5.26 (le plus simple : un conteneur Docker, voir 3.2)
+
+  Commun : aucune clé de LLM n'est nécessaire. Sans clé, la plateforme fonctionne en mode
+  hors-ligne (extraction par règles, générateur extractif).
+
+
+2. VOIE A : DOCKER COMPOSE (RECOMMANDÉE)
+=======================================
+
+2.1 Créer le fichier de configuration
+-------------------------------------
+
+    cd RAG
+    make env            # équivalent : bash CODE/scripts/ops/init_env.sh
+
+Ce script copie .env.example vers .env en générant des secrets ALÉATOIRES (mot de passe Neo4j,
+clé de signature des jetons). Le fichier .env reçoit les droits 600 (lisible par son seul
+propriétaire), n'est jamais affiché et n'est jamais versionné (il figure dans .gitignore). Si
+.env existe déjà, il n'est pas modifié.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | Ne copiez jamais un secret dans le code, dans un fichier versionné, dans un        |
+    | message ou dans un journal. Le seul endroit prévu pour les secrets est .env (en     |
+    | production : un coffre-fort de secrets).                                           |
+    +------------------------------------------------------------------------------------+
+
+2.2 Construire et démarrer
+--------------------------
+
+    make up             # équivalent : docker compose up -d --build
+
+Trois conteneurs démarrent, dans l'ordre imposé par les contrôles de santé :
+
+    neo4j      base de graphes (aucun port publié sur la machine)
+    backend    API FastAPI (démarre quand Neo4j répond ; crée le schéma et les index)
+    frontend   interface web nginx (démarre quand l'API répond), publiée sur 127.0.0.1:8080
+
+Vérifier l'état :
+
+    make ps             # tous les services doivent être « healthy »
+    curl -s http://127.0.0.1:8080/api/health
+
+Réponse attendue (exemple réel) :
+
+    {"status":"ok","version":"1.0.0","neo4j":"up","llm_provider":"offline",
+     "embedding_provider":"wordllama"}
+
+2.3 Charger le corpus de démonstration
+--------------------------------------
+
+    make ingest         # équivalent : docker compose exec backend python -m scripts.ingest
+
+L'ingestion des 35 documents prend une vingtaine de secondes (dont quelques secondes d'OCR pour
+le document scanné). Le script affiche un résumé JSON : nombre de documents ingérés, doublons,
+document en quarantaine. Relancer la commande ne change rien (« unchanged ») : l'ingestion est
+idempotente.
+
+    make reingest       # vide le graphe puis réingère tout (utile après un changement d'encodeur)
+
+2.4 Ouvrir l'interface
+----------------------
+
+Navigateur : http://localhost:8080 (ou le port choisi dans HTTP_PORT).
+
+2.5 Arrêter, redémarrer
+-----------------------
+
+    make down           # arrête les conteneurs ; les DONNÉES sont conservées (volumes)
+    make up             # redémarre ; le graphe est toujours là, pas besoin de réingérer
+    make clean          # supprime AUSSI les volumes (données perdues), après confirmation
+
+2.6 Accéder à Neo4j Browser (débogage uniquement)
+-------------------------------------------------
+
+Par sécurité, Neo4j n'est pas exposé. Pour l'explorer en local :
+
+    docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d
+
+Neo4j Browser est alors sur http://127.0.0.1:7474 (utilisateur neo4j, mot de passe : valeur de
+NEO4J_PASSWORD dans .env). Ne jamais utiliser cette surcharge sur un serveur exposé.
+
+
+3. VOIE B : INSTALLATION LOCALE DE DÉVELOPPEMENT
+===============================================
+
+3.1 Environnement Python
+------------------------
+
+    cd RAG/CODE
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements-dev.txt
+
+requirements.txt fige les versions exactes (reproductibilité) ; il inclut le modèle français de
+spaCy et l'encodeur WordLlama, distribués sur PyPI.
+
+3.2 Base Neo4j
+--------------
+
+    docker run -d --name neo4j-dev -p 127.0.0.1:7687:7687 -p 127.0.0.1:7474:7474 \
+      -e NEO4J_AUTH=neo4j/<mot-de-passe-local-long> neo4j:5.26-community
+
+3.3 Configuration
+-----------------
+
+Créer RAG/.env (voir 2.1) puis y vérifier :
+
+    NEO4J_URI=bolt://localhost:7687
+    NEO4J_PASSWORD=<le mot de passe choisi en 3.2>
+
+3.4 Ingestion et API
+--------------------
+
+    cd RAG/CODE
+    python -m scripts.ingest
+    uvicorn backend.main:create_app --factory --port 8000
+
+Documentation interactive de l'API : http://127.0.0.1:8000/api/docs
+
+3.5 Interface en mode développement
+-----------------------------------
+
+    cd RAG/CODE/frontend
+    npm ci
+    npm run dev
+
+Interface : http://localhost:5173 ; les appels /api sont relayés vers http://127.0.0.1:8000
+(vite.config.ts ; une autre adresse peut être donnée par la variable API_URL).
+
+3.6 Régénérer le corpus (facultatif)
+------------------------------------
+
+Le corpus généré (data/sample_documents, 35 fichiers) est versionné. Pour le reconstruire à partir
+des sources Markdown :
+
+    cd RAG/data/synthetic_data
+    python generate_corpus.py --out ../sample_documents
+
+Le générateur est déterministe : il produit les mêmes contenus à chaque exécution.
+
+
+4. SE CONNECTER : COMPTES DE DÉMONSTRATION
+=========================================
+
+Les comptes sont définis dans RAG/CODE/config/users.example.yaml (mots de passe hachés PBKDF2).
+Ils servent UNIQUEMENT à la démonstration sur le corpus fictif. Mot de passe commun : celui
+indiqué dans ce même fichier de configuration (commentaire d'en-tête).
+
+    Compte                Rôle      Groupes de diffusion   Intérêt pour la démonstration
+    --------------------  --------  ---------------------  ---------------------------------------
+    admin                 admin     tous                   gestion des documents et ingestion
+    manager.conformite    manager   ALL, DCONF             recherche d'experts
+    analyste.conformite   viewer    ALL, DCONF             accès au rapport d'audit KYC
+    ingenieur.dsi         viewer    ALL, DSI               accès au plan de continuité (RTO)
+    auditeur              manager   ALL, DAI, DCONF        audit, experts
+    collaborateur         viewer    ALL                    documents diffusés à tous uniquement
+
+Le même document est visible ou non selon le compte : c'est le moyen le plus simple de montrer
+le contrôle d'accès.
+
+En dehors d'une démonstration, ces comptes doivent être remplacés : créer un fichier non versionné
+(par exemple config/users.local.yaml, déjà dans .gitignore) avec
+
+    python -m scripts.create_user --file config/users.local.yaml --username marie \
+        --name "Marie Dupont" --roles manager --groups ALL DCONF
+
+(le mot de passe est demandé de façon interactive, 12 caractères minimum), puis pointer
+USERS_FILE vers ce fichier. En production, l'authentification devrait passer par l'annuaire de
+l'entreprise (SSO).
+
+
+5. PARCOURS DE DÉMONSTRATION (DIX MINUTES)
+=========================================
+
+  1. Connexion avec « analyste.conformite ». Page d'accueil : indicateurs du graphe et périmètre
+     d'accès (groupes ALL et DCONF).
+  2. Assistant : « Quelles applications dépendent de CoreNova ? »
+     -> réponse relationnelle avec faits [F1]... et passages [C1]... ; cliquer sur un marqueur
+        pour voir la preuve ; onglet du sous-graphe.
+  3. Assistant : « Quelles applications seraient affectées, directement ou indirectement, par une
+     indisponibilité de CoreNova ? »
+     -> chemin à deux sauts : CoreNova -> DataLake Horizon -> CrediScore.
+  4. Assistant : « Quelle est la fréquence de revue périodique des clients à risque élevé ? »
+     -> 12 mois selon la procédure en vigueur, avec signalement des sources à 24 mois.
+  5. Se déconnecter ; se connecter avec « collaborateur » ; demander « Quel est le RTO de
+     CoreNova ? » -> abstention. Avec « ingenieur.dsi » -> « RTO : 4 heures ».
+  6. Assistant : « Quelles astuces existent pour utiliser Orion CRM ? »
+     -> abstention : le seul document sur ce sujet est en quarantaine (injection de prompt).
+  7. Explorateur : rechercher CoreNova, afficher son voisinage, ouvrir la fiche d'une entité.
+  8. Experts (compte manager) : domaine « Lutte anti-blanchiment » -> classement justifié.
+  9. Recommandations : documents liés à la procédure KYC version 2, avec leurs raisons.
+ 10. Documents (compte admin) : catalogue, statuts (actif, remplacé, doublon, quarantaine),
+     anomalies de qualité, historique des ingestions.
+
+
+6. CONFIGURER UN LLM (OPTIONNEL)
+===============================
+
+Sans LLM, tout fonctionne. Pour en brancher un, renseigner dans RAG/.env :
+
+    LLM_PROVIDER=anthropic            # ou openai_compatible
+    LLM_API_KEY=<votre clé>           # JAMAIS dans le code ni dans un fichier versionné
+    LLM_MODEL=<modèle choisi dans la documentation du fournisseur>
+    LLM_BASE_URL=<URL de l'API>       # obligatoire pour openai_compatible
+
+puis redémarrer l'API (make up). La route /api/health indique alors le fournisseur actif.
+
+Précautions :
+  - « openai_compatible » suppose que le fournisseur implémente réellement l'interface
+    POST {LLM_BASE_URL}/chat/completions : à vérifier dans sa documentation, ne jamais le supposer ;
+  - avec Anthropic, le repli côté serveur vers un modèle de secours est activé par défaut
+    (LLM_ANTHROPIC_FALLBACKS=true) ; LLM_EFFORT règle la profondeur de raisonnement ;
+  - LLM_EXTRACTION_ENABLED=true active aussi l'extraction de relations par LLM à l'ingestion
+    (puis `python -m scripts.ingest --use-llm`) ;
+  - les documents et questions sont alors ENVOYÉS au fournisseur : vérifier que la classification
+    des données le permet ;
+  - une clé qui aurait été communiquée en clair (message, courriel, fichier) doit être considérée
+    comme compromise : la révoquer et en créer une nouvelle avant usage.
+
+
+7. LANCER LES TESTS
+==================
+
+    cd RAG/CODE
+    python -m pytest -m "not integration" -q      # tests unitaires et d'API, sans base
+    ruff check .                                  # analyse statique et règles de sécurité
+
+Tests d'intégration : ils exigent une base Neo4j JETABLE, car ils la VIDENT entièrement avant
+d'ingérer le corpus.
+
+    NEO4J_TEST_URI=bolt://localhost:7688 NEO4J_TEST_PASSWORD=<mot-de-passe> \
+        python -m pytest -m integration -q
+
+Exemple de base jetable :
+
+    docker run -d --name neo4j-test -p 127.0.0.1:7688:7687 \
+      -e NEO4J_AUTH=neo4j/<mot-de-passe-test> neo4j:5.26-community
+
+Ne JAMAIS pointer NEO4J_TEST_URI vers la base de démonstration ou de production.
+
+Interface : cd RAG/CODE/frontend && npm ci && npm run build (vérification des types et
+compilation).
+
+
+8. REPRODUIRE L'ÉVALUATION
+=========================
+
+    cd RAG/CODE
+    EVAL_NEO4J_URI=bolt://localhost:7688 EVAL_NEO4J_PASSWORD=<...> \
+    ABLATION_NEO4J_URI=bolt://localhost:7689 ABLATION_NEO4J_PASSWORD=<...> \
+        bash scripts/run_evaluation_campaign.sh
+
+Le script enchaîne trois campagnes (configuration gelée, modification post-gel, ablation de
+l'encodeur spaCy) sur des bases VIDABLES, puis régénère evaluation/results/RESULTATS.md et les
+figures (python -m evaluation.report). Durée : de l'ordre de quelques minutes sur une machine à
+quatre processeurs.
+
+Vérifier la reproductibilité entre deux exécutions :
+
+    python -m evaluation.compare_runs evaluation/results/A evaluation/results/B
+
+Le détail du protocole et des métriques est dans TESTS_ET_EVALUATION.txt.
+
+
+9. COMMANDES UTILES (MAKEFILE)
+=============================
+
+Depuis le dossier RAG/ (make help affiche la liste) :
+
+    make env               créer .env avec des secrets aléatoires
+    make up / down / ps    démarrer, arrêter, état
+    make logs              journaux de l'API
+    make ingest            synchroniser le corpus ; make reingest : tout reconstruire
+    make backup            sauvegarde (Neo4j + fichiers téléversés) dans backups/
+    make restore BACKUP=backups/<horodatage>
+    make lint / test / test-integration / frontend-build / evaluate
+    make clean             supprimer conteneurs ET volumes (confirmation demandée)
+
+
+10. DÉPANNAGE
+============
+
+    Symptôme                                   Cause probable et solution
+    -----------------------------------------  --------------------------------------------------
+    « Définir NEO4J_PASSWORD dans le fichier   .env absent : lancer make env
+    .env » au démarrage
+    API « unhealthy », journaux : APP_SECRET_  secret absent ou trop court (32 caractères
+    KEY                                        minimum) : régénérer .env
+    /api/health : "neo4j":"down"               Neo4j démarre encore (attendre) ou mauvais mot de
+                                               passe : comparer NEO4J_PASSWORD et la base
+    Interface : « Base de connaissances        réponse 503 de l'API : Neo4j indisponible
+    indisponible »
+    Graphe vide, réponses toujours abstenues   corpus non ingéré : make ingest
+    Erreur de dimension d'index vectoriel      changement d'encodeur : make reingest
+    OCR : « tesseract is not installed »       voie B : installer tesseract-ocr et ses modèles
+                                               fra/eng
+    Port 8080 déjà utilisé                     changer HTTP_PORT dans .env
+    429 « Limite de questions par minute »     limitation de débit (30 questions par minute et
+                                               par utilisateur) : patienter
+    Connexion refusée après plusieurs essais   limitation des tentatives de connexion
+                                               (10 par 5 minutes) : patienter

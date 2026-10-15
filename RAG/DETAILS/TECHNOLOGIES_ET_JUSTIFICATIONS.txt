@@ -1,0 +1,353 @@
+====================================================================================================
+                          TECHNOLOGIES ET JUSTIFICATIONS DES CHOIX TECHNIQUES
+====================================================================================================
+
+Objectif : pour chaque technologie utilisée, expliquer le besoin auquel elle répond, les
+alternatives envisagées, ses avantages et ses limites, et comment justifier ce choix devant un
+jury. Principe directeur du projet : aucune technologie n'est retenue parce qu'elle est à la mode ;
+chacune doit répondre à un besoin identifié et rester réalisable par une seule personne.
+
+Les versions indiquées sont celles figées dans RAG/CODE/requirements.txt et
+RAG/CODE/frontend/package.json (reproductibilité).
+
+SOMMAIRE
+--------
+  1. Méthode de choix
+  2. Tableau de synthèse
+  3. Langage et API : Python, FastAPI, Pydantic
+  4. Base de connaissances : Neo4j et Cypher
+  5. Orchestration : LangGraph
+  6. Lecture des documents : PyMuPDF, python-docx, Tesseract
+  7. Traitement du langage : spaCy, WordLlama, rapidfuzz, Snowball
+  8. LLM : httpx et SDK Anthropic, derrière une interface commune
+  9. Sécurité : PyJWT, PBKDF2, en-têtes, CSP
+ 10. Interface : React, TypeScript, Vite, Cytoscape.js
+ 11. Conteneurs et exploitation : Docker, Compose, nginx, Caddy
+ 12. Qualité : pytest, ruff, pip-audit, gitleaks, GitHub Actions
+ 13. Évaluation et livrables : matplotlib, python-pptx, docx-js, LibreOffice
+ 14. Technologies écartées, et pourquoi
+ 15. Comment présenter ces choix au jury
+
+
+1. MÉTHODE DE CHOIX
+==================
+
+Chaque choix a été évalué selon six critères :
+
+  1. BESOIN : quel problème concret du projet la technologie résout-elle ?
+  2. ADÉQUATION au contexte bancaire : confidentialité, traçabilité, fonctionnement hors-ligne ;
+  3. MATURITÉ : documentation, communauté, stabilité ;
+  4. COÛT DE MISE EN ŒUVRE pour une seule personne en temps limité ;
+  5. LICENCE et coût : libre ou gratuit pour un projet académique ;
+  6. RÉVERSIBILITÉ : peut-on la remplacer sans tout réécrire ?
+
+Une contrainte d'environnement a pesé sur plusieurs choix : pendant le développement, aucun
+modèle ne pouvait être téléchargé depuis HuggingFace, et aucune clé de LLM n'était disponible.
+Tout devait donc fonctionner avec des composants installables depuis PyPI ou npm.
+
+
+2. TABLEAU DE SYNTHÈSE
+=====================
+
+    Besoin                         Choix                     Principale alternative
+    -----------------------------  ------------------------  -------------------------------------
+    Langage du traitement          Python 3.12 / 3.13        -
+    API web                        FastAPI 0.143             Flask, Django REST
+    Validation et configuration    Pydantic 2, pydantic-     dataclasses + validation manuelle
+                                   settings
+    Graphe + vecteurs + plein      Neo4j 5.26 Community      PostgreSQL + pgvector ; Neo4j + base
+    texte                                                    vectorielle séparée
+    Orchestration du workflow      LangGraph 1.2             code Python « à la main » ; agents
+    Lecture PDF                    PyMuPDF 1.28              pdfplumber, pypdf
+    Lecture DOCX                   python-docx 1.2           conversion via LibreOffice
+    OCR                            Tesseract 5 (pytesseract) EasyOCR, PaddleOCR, services cloud
+    NER, vecteurs de mots          spaCy 3.8, fr_core_news_md Stanza, modèles HuggingFace
+    Encodeur de phrases            WordLlama 0.4             Sentence-BERT (non téléchargeable ici)
+    Appariement approximatif       rapidfuzz 3.14            difflib, jellyfish
+    Racinisation                   snowballstemmer 3.1       lemmatisation spaCy
+    Appels LLM                     httpx 0.28, anthropic 1.13 LangChain (abstraction plus lourde)
+    Jetons d'authentification      PyJWT 2.15                sessions côté serveur
+    Interface web                  React 19 + TypeScript 6   Streamlit, Vue, pages serveur
+    Outil de construction          Vite 8                    webpack
+    Visualisation du graphe        Cytoscape.js 3.34         vis-network, D3, Sigma.js
+    Conteneurs                     Docker + Compose          installation directe sur serveur
+    Reverse proxy HTTPS            Caddy 2.8                 nginx + certbot, Traefik
+    Tests                          pytest 9.1                unittest
+    Qualité du code                ruff 0.17                 flake8 + black + isort
+
+
+3. LANGAGE ET API : PYTHON, FASTAPI, PYDANTIC
+============================================
+
+Python s'impose pour le traitement : c'est le langage de l'écosystème data (spaCy, NumPy, pilote
+Neo4j, LangGraph, SDK des fournisseurs de LLM) et celui de la formation.
+
+FastAPI
+  Besoin : exposer les fonctions de la plateforme (questions, graphe, documents) à une interface
+  web, avec authentification et documentation.
+  Avantages : validation automatique des entrées à partir des types Python, documentation
+  OpenAPI générée (/api/docs), système de dépendances (Depends) idéal pour injecter
+  l'utilisateur courant et vérifier les rôles (backend/deps.py), bonnes performances.
+  Limites : moins « tout-en-un » que Django (pas d'interface d'administration, pas d'ORM) ;
+  ce n'est pas un problème ici puisque la base est Neo4j.
+  Alternative : Flask (plus minimaliste, validation à écrire soi-même).
+
+Pydantic et pydantic-settings
+  Besoin : décrire les données échangées (documents, passages, relations) et lire la
+  configuration depuis l'environnement sans jamais exposer un secret.
+  Points clés : SecretStr masque les secrets dans repr() et les journaux ; les modèles de
+  sortie de l'extracteur LLM (LLMExtractionOutput) valident automatiquement le JSON produit.
+
+
+4. BASE DE CONNAISSANCES : NEO4J ET CYPHER
+=========================================
+
+Besoin : stocker un graphe d'entités et de relations AVEC leur provenance, le parcourir sur
+plusieurs sauts, et faire aussi de la recherche plein texte et vectorielle, le tout filtré par
+les droits d'accès.
+
+Pourquoi Neo4j :
+  - modèle « graphe de propriétés » : des propriétés sur les relations, indispensables pour la
+    provenance (listes de documents, passages, citations) ;
+  - Cypher, langage déclaratif lisible, qui exprime un parcours à profondeur variable en une
+    ligne : (s)-[:DEPENDS_ON*1..2]->(o) ;
+  - index vectoriel (HNSW) ET index plein texte (Lucene, analyseur français) dans la même base :
+    une seule base à sauvegarder, sécuriser et filtrer ;
+  - Neo4j Browser pour explorer et déboguer visuellement (mode débogage du projet).
+
+Vérification préalable : la disponibilité de l'index vectoriel dans l'édition COMMUNITY a été
+testée expérimentalement sur Neo4j 5.26.31 avant de bâtir l'architecture dessus.
+
+Limites : l'édition Community n'a ni sauvegarde à chaud, ni contrôle d'accès fin, ni grappe. Le
+projet les compense par une sauvegarde à froid scriptée et un contrôle d'accès applicatif.
+
+Alternatives :
+  - PostgreSQL + pgvector (+ extension de graphe) : très crédible en entreprise (souvent déjà
+    exploité par la DSI) ; requêtes multi-sauts moins naturelles ;
+  - Neo4j + base vectorielle séparée (Qdrant, Weaviate) : deux bases à synchroniser et à filtrer
+    de manière cohérente, ce qui augmente le risque de fuite ;
+  - triplestore RDF (GraphDB, Jena) : adapté aux ontologies formelles et à l'interopérabilité,
+    mais la provenance par relation exige la réification.
+
+
+5. ORCHESTRATION : LANGGRAPH
+===========================
+
+Besoin : enchaîner analyse, recherche, contrôle de suffisance, relance éventuelle, génération et
+vérification, avec des transitions conditionnelles et une trace auditable.
+
+Avantages : état typé partagé, transitions conditionnelles et boucle déclarées explicitement,
+trace accumulée par un réducteur, diagramme Mermaid généré depuis le code. Fonctionne sans LLM.
+
+Limites : une dépendance de plus, dont l'API évolue vite (version figée à 1.2.14) ; pour un
+workflow de cette taille, du Python simple aurait aussi fonctionné.
+
+Justification devant un jury : LangGraph est utilisé comme un AUTOMATE À ÉTATS explicite, pas
+comme un framework d'agents. Le choix est réversible : les nœuds sont des méthodes Python
+ordinaires, testables sans LangGraph. Voir LANGGRAPH_ET_ORCHESTRATION.txt, section 15, pour la
+comparaison avec un agent.
+
+
+6. LECTURE DES DOCUMENTS : PYMUPDF, PYTHON-DOCX, TESSERACT
+=========================================================
+
+PyMuPDF
+  Besoin : extraire le texte des PDF page par page, détecter les PDF chiffrés, compter les pages,
+  et rendre une page en image pour l'OCR.
+  Avantages : rapide, robuste, un seul outil pour ces quatre besoins.
+  Limite : licence AGPL (ou commerciale) ; acceptable pour un projet académique, à examiner pour
+  un usage commercial.
+  Alternatives : pdfplumber (meilleur sur les tableaux, plus lent), pypdf (plus limité).
+
+python-docx
+  Besoin : lire paragraphes, styles (titres, listes) et TABLEAUX des fichiers Word, dans l'ordre.
+  Le projet parcourt directement le XML pour conserver l'ordre tableaux / paragraphes, car le
+  cartouche des documents est un tableau.
+
+Tesseract (via pytesseract)
+  Besoin : lire les PDF scannés (un document du corpus).
+  Avantages : libre, hors-ligne, CPU, modèles français et anglais, confiance par mot.
+  Mesure : confiance moyenne d'environ 94 sur 100 sur le document scanné du corpus.
+  Limites : pas de compréhension de la mise en page (tableaux scannés) ; qualité dépendante du
+  scan. Alternatives : EasyOCR, PaddleOCR (modèles à télécharger), services OCR cloud (exclus :
+  documents envoyés à un tiers), modèles de mise en page comme LayoutLM (perspective).
+
+
+7. TRAITEMENT DU LANGAGE : SPACY, WORDLLAMA, RAPIDFUZZ, SNOWBALL
+===============================================================
+
+spaCy et fr_core_news_md
+  Besoin : repérer les noms de personnes absents du référentiel (NER, étiquette PER) ; fournir
+  des vecteurs de mots français (encodeur alternatif).
+  Avantage : modèle français distribué sur PyPI, donc installable sans HuggingFace.
+
+WordLlama (encodeur par défaut)
+  Besoin : transformer passages et questions en vecteurs pour la recherche sémantique, hors-ligne.
+  Choix fondé sur une MESURE : nDCG@5 de la recherche vectorielle 0,720 avec WordLlama contre
+  0,409 avec les vecteurs spaCy moyennés.
+  Limites : encodeur statique, entraîné surtout sur de l'anglais, nettement moins performant
+  qu'un encodeur neuronal de phrases. C'est l'une des principales limites des résultats.
+  Alternative préférable en production : un encodeur multilingue récent de type Sentence-BERT
+  (Reimers et Gurevych, 2019), à condition de pouvoir l'héberger. Le changement est prévu par la
+  configuration (EMBEDDING_PROVIDER) et impose une réingestion.
+
+rapidfuzz
+  Besoin : comparer une mention à des noms connus en tolérant fautes et variantes (résolution
+  d'entités, vérification des citations du LLM). Rapide (C++), API simple ; le score
+  token_sort_ratio est insensible à l'ordre des mots.
+
+snowballstemmer
+  Besoin : rapprocher les formes d'un même mot (« plafond », « plafonné ») dans le contrôle de
+  suffisance et la vérification. Léger, déterministe ; une lemmatisation spaCy serait plus fine
+  mais plus lente.
+
+
+8. LLM : HTTPX ET SDK ANTHROPIC, DERRIÈRE UNE INTERFACE COMMUNE
+==============================================================
+
+Besoin : pouvoir brancher un LLM pour la génération et l'extraction, SANS en dépendre et sans
+supposer le fournisseur.
+
+Choix : une interface minimale (LLMClient.complete) et plusieurs adaptateurs (core/llm.py) :
+  - httpx pour les API compatibles « Chat Completions » (compatibilité à vérifier pour chaque
+    fournisseur), avec reprises et respect de l'en-tête Retry-After ;
+  - le SDK officiel `anthropic` pour l'API Messages d'Anthropic (reprises intégrées, repli côté
+    serveur activé par défaut) ;
+  - un mode hors-ligne par défaut et un LLM simulé pour les tests.
+
+Pourquoi pas LangChain pour les appels LLM ? Il apporte de nombreuses abstractions (chaînes,
+mémoires, outils) dont le projet n'a pas besoin, et ajoute une couche entre le code et l'API du
+fournisseur. Deux adaptateurs de quelques dizaines de lignes, testés, suffisent.
+
+Limite majeure : aucun LLM n'a été évalué faute de clé. L'architecture est prête, la mesure reste
+à faire.
+
+
+9. SÉCURITÉ : PYJWT, PBKDF2, EN-TÊTES, CSP
+=========================================
+
+  - Mots de passe : PBKDF2-HMAC-SHA256 avec 600 000 itérations et sel aléatoire (bibliothèque
+    standard hashlib), comparaison en temps constant (hmac.compare_digest). Pas de dépendance
+    externe. Alternative : Argon2 ou bcrypt, plus résistants aux attaques matérielles, au prix
+    d'une dépendance compilée.
+  - Jetons : JWT signés HS256 (PyJWT) portant identité, rôles et groupes, durée de vie limitée
+    (480 minutes par défaut), secret d'au moins 32 caractères exigé au démarrage.
+  - Limitation de débit en mémoire (connexions et questions).
+  - En-têtes de sécurité (nosniff, X-Frame-Options DENY, no-referrer, no-store) et politique de
+    sécurité du contenu stricte côté nginx.
+  En production, l'authentification devrait être déléguée à l'annuaire de la banque (SSO).
+
+
+10. INTERFACE : REACT, TYPESCRIPT, VITE, CYTOSCAPE.JS
+====================================================
+
+Besoin : une interface sobre et interactive : poser des questions, cliquer sur une citation pour
+voir le passage, explorer le graphe (zoom, déplacement, voisinage d'un nœud), consulter les
+experts et les documents.
+
+  - React 19 : composants réutilisables (états de chargement, d'erreur, rendu des citations),
+    écosystème mature.
+  - TypeScript : les types des réponses de l'API (src/types.ts) détectent à la compilation les
+    erreurs d'accès aux champs.
+  - Vite : serveur de développement rapide avec relais (proxy) vers l'API, construction
+    optimisée pour la production.
+  - Cytoscape.js : bibliothèque spécialisée dans la visualisation de graphes (dispositions
+    automatiques, styles par type de nœud, événements). Le projet désactive son injection de
+    style pour respecter la CSP.
+
+Alternative écartée : Streamlit, très rapide pour un prototype de data science, mais moins
+adapté à une interface multi-pages avec authentification, contrôle fin de la mise en page et
+politique de sécurité stricte.
+
+
+11. CONTENEURS ET EXPLOITATION : DOCKER, COMPOSE, NGINX, CADDY
+=============================================================
+
+  - Docker : chaque composant (Neo4j, API, interface) dans une image reproductible. L'image de
+    l'API embarque Python, Tesseract et ses modèles de langue, et les modèles spaCy et WordLlama :
+    elle fonctionne sans aucun téléchargement au démarrage.
+  - Docker Compose : décrit les trois services, leurs volumes, leurs contrôles de santé et le
+    réseau interne en un fichier. Suffisant pour un pilote sur un serveur unique.
+  - nginx (image non privilégiée) : sert l'interface et relaie /api vers le backend.
+  - Caddy (surcouche de production) : HTTPS automatique avec certificats Let's Encrypt.
+
+Alternative : Kubernetes, justifié pour la haute disponibilité et la montée en charge, mais
+disproportionné pour un pilote. Voir DEPLOIEMENT_ET_MAINTENANCE.txt.
+
+
+12. QUALITÉ : PYTEST, RUFF, PIP-AUDIT, GITLEAKS, GITHUB ACTIONS
+==============================================================
+
+  - pytest : tests unitaires, d'intégration (sur une base Neo4j jetable) et d'API ; marqueur
+    « integration » pour séparer les tests qui exigent Neo4j.
+  - ruff : analyse statique et règles de sécurité (famille S, inspirée de bandit), un seul outil
+    rapide à la place de plusieurs.
+  - pip-audit : recherche de vulnérabilités connues dans les dépendances.
+  - gitleaks : recherche de secrets dans le dépôt et son historique.
+  - GitHub Actions : exécute ces contrôles à chaque envoi (fichier .github/workflows/ci.yml).
+
+
+13. ÉVALUATION ET LIVRABLES
+==========================
+
+  - matplotlib : figures des résultats, générées depuis les fichiers de résultats (aucune valeur
+    saisie à la main).
+  - Le mémoire est rédigé en Markdown, converti en DOCX par un script (docx-js), puis la table des
+    matières est mise à jour et le PDF exporté par LibreOffice. Avantage : le texte est
+    versionné et relisible dans Git ; les tableaux et figures sont numérotés automatiquement.
+  - Captures d'écran et schémas : Playwright (navigateur automatisé), à partir de l'application
+    réellement en fonctionnement.
+
+
+14. TECHNOLOGIES ÉCARTÉES, ET POURQUOI
+=====================================
+
+    Technologie                        Raison de l'écarter
+    ---------------------------------  ---------------------------------------------------------
+    Elasticsearch / OpenSearch         Neo4j fournit déjà le plein texte BM25 ; une base de plus
+    Base vectorielle dédiée            même raison ; synchronisation et filtrage des droits
+    Agents LLM (ReAct, LangChain       chemin imprévisible, coût non borné, inutilisable sans
+    agents)                            LLM
+    Kafka, Airflow                     pas de flux temps réel ni d'orchestration de lots
+                                       complexes : l'ingestion est un script idempotent
+    Spark                              volume de données sans commune mesure avec son usage
+    Microservices                      un seul développeur, faible charge
+    Fine-tuning d'un modèle            pas de données d'entraînement, pas de GPU, pas de besoin
+                                       démontré
+    GraphRAG global (résumés de        exige un LLM pour construire les résumés ; perspective
+    communautés)
+    OCR cloud                          documents envoyés à un tiers
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | Un projet de Data Engineering n'est pas jugé au nombre de technologies empilées,   |
+    | mais à la justesse de chaque choix. Ne PAS utiliser Spark, Kafka ou un agent LLM   |
+    | est aussi une décision d'architecture, qu'il faut savoir justifier.                |
+    +------------------------------------------------------------------------------------+
+
+
+15. COMMENT PRÉSENTER CES CHOIX AU JURY
+======================================
+
+Pour chaque choix, une structure en quatre temps fonctionne bien :
+
+  1. le BESOIN (« il fallait parcourir des dépendances sur deux sauts, avec leur provenance ») ;
+  2. les OPTIONS (« base relationnelle, base de graphes, triplestore ») ;
+  3. le CRITÈRE décisif (« provenance sur les relations et index vectoriel dans la même base ») ;
+  4. la LIMITE assumée (« pas de sauvegarde à chaud en Community : compensée par un script »).
+
+Exemples de questions et réponses courtes :
+
+  « Pourquoi pas un encodeur plus performant ? »
+    Aucun modèle n'était téléchargeable dans l'environnement ; deux encodeurs disponibles ont été
+    comparés par une mesure, et le meilleur retenu. L'écart avec l'état de l'art est une limite
+    explicite, et le changement d'encodeur est prévu par la configuration.
+
+  « Votre solution dépend-elle d'un fournisseur de LLM ? »
+    Non. Elle fonctionne entièrement hors-ligne. Deux adaptateurs existent ; le choix du
+    fournisseur dépendra de la politique de la banque sur les données envoyées à l'extérieur.
+
+  « Pourquoi Docker Compose et pas Kubernetes ? »
+    Le besoin est un pilote sur un serveur. Compose suffit, se lit en un fichier et a été testé de
+    bout en bout (sauvegarde et restauration comprises). Kubernetes deviendrait pertinent à
+    l'échelle d'un déploiement généralisé.
