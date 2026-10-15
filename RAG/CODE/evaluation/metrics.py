@@ -8,8 +8,8 @@ Recherche d'information (classement de documents, pertinence graduée 0/1/2) :
 - nDCG@k      : gain cumulé actualisé normalisé (Järvelin et Kekäläinen, 2002), gain = 2^rel - 1.
 
 Statistiques :
-- intervalle de confiance à 95 % de la moyenne par bootstrap percentile (Efron et Tibshirani, 1993),
-  graine fixée pour la reproductibilité ;
+- intervalle de confiance à 95 % de la moyenne par bootstrap percentile, graine fixée
+  pour la reproductibilité ;
 - comparaison appariée de deux systèmes sur les mêmes questions : différence moyenne avec IC
   bootstrap apparié, et test exact des signes (questions où les systèmes diffèrent).
 Avec 66 questions, ces intervalles sont larges : ils servent à ne pas surinterpréter des écarts.

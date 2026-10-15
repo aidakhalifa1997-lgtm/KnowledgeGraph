@@ -43,7 +43,7 @@ Notre démarche alterne conception et évaluation. Faute de pouvoir utiliser des
 
 Les contributions de ce travail sont les suivantes :
 
-- une plateforme fonctionnelle, conteneurisée et testée (98 fonctions de test, intégration continue), dont l'architecture place le contrôle d'accès et la provenance au cœur du modèle de données ;
+- une plateforme fonctionnelle, conteneurisée et testée (99 fonctions de test, intégration continue), dont l'architecture place le contrôle d'accès et la provenance au cœur du modèle de données ;
 - un banc d'essai reproductible en français pour la gestion des connaissances bancaires, avec un protocole qui distingue les questions utilisées pendant la mise au point de celles jamais inspectées ;
 - une comparaison expérimentale de cinq architectures à workflow identique, qui montre notamment que l'apport du graphe dépend fortement du type de question et que la qualité de l'encodeur vectoriel conditionne l'intérêt d'une recherche hybride ;
 - une réflexion sur la gouvernance et le déploiement d'un tel outil dans une banque, nourrie par notre expérience de l'organisation et du contrôle interne.

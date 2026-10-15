@@ -1,0 +1,450 @@
+====================================================================================================
+                        TESTS ET ÉVALUATION EXPÉRIMENTALE : PROUVER CE QUE L'ON AFFIRME
+====================================================================================================
+
+Objectif : comprendre comment la plateforme est testée (est-ce que le code fait ce qu'il doit
+faire ?) et évaluée (est-ce que ce qu'il fait est bon, et mieux que les alternatives ?). Ces deux
+questions sont différentes et utilisent des outils différents.
+
+Modules concernés : RAG/CODE/tests/ (tests automatisés), RAG/CODE/evaluation/ (banc
+d'évaluation), RAG/data/synthetic_data/gold/ (vérités terrain).
+
+SOMMAIRE
+--------
+  1. Tester et évaluer : deux questions différentes
+  2. Les tests automatisés
+  3. Le banc d'évaluation : vue d'ensemble
+  4. Le corpus et les vérités terrain
+  5. Le protocole : éviter de se tromper soi-même
+  6. Les métriques, expliquées
+  7. L'analyse statistique
+  8. Les résultats principaux
+  9. Lire les fichiers de résultats
+ 10. Reproductibilité
+ 11. Menaces à la validité
+ 12. Questions de jury possibles
+
+
+1. TESTER ET ÉVALUER : DEUX QUESTIONS DIFFÉRENTES
+================================================
+
+    TESTER                                        ÉVALUER
+    --------------------------------------------  --------------------------------------------
+    Le code respecte-t-il sa spécification ?      Le système est-il bon pour sa tâche ?
+    Réponse binaire : passe / échoue              Réponse graduée : une mesure, un intervalle
+    Ex. : un document restreint ne doit JAMAIS    Ex. : quelle part des questions obtient une
+    apparaître pour un collaborateur              réponse exacte ?
+    Outil : pytest                                Outil : evaluation/run_evaluation.py
+    Exécuté à chaque modification (CI)            Exécuté par campagnes, résultats archivés
+
+Un système peut passer tous ses tests et être médiocre ; il peut aussi être bon en moyenne et
+violer une règle de sécurité sur un cas. Il faut les deux.
+
+
+2. LES TESTS AUTOMATISÉS
+=======================
+
+2.1 Organisation
+----------------
+
+    Fichier                          Cas   Contenu
+    -------------------------------  ----  ----------------------------------------------------
+    test_text_and_cleaning.py        11    normalisation, nettoyage, métadonnées, découpage
+    test_ingestion_security.py        8    validation des fichiers, injection, MinHash
+    test_extraction.py               10    règles, résolution d'entités, fusion, extracteur LLM
+                                           simulé (preuve absente, ontologie violée...)
+    test_retrieval_units.py           8    RRF, garantie par source, PageRank personnalisé,
+                                           intention, requête Lucene
+    test_orchestration_units.py      16    classification, suffisance, conflits, génération,
+                                           vérification et assainissement
+    test_security_and_llm.py         14    mots de passe, rôles, jetons, limitation de débit,
+                                           masquage des secrets, adaptateurs LLM simulés
+    test_integration.py              23    sur une vraie base Neo4j : ingestion du corpus,
+                                           idempotence, cycle de vie, versions, droits,
+                                           workflow complet, experts, recommandations
+    test_api.py                      13    API de bout en bout : authentification, rôles,
+                                           filtrage par droits, erreurs, champs internes cachés
+    -------------------------------  ----
+    Total                            103   (99 fonctions de test, certaines paramétrées)
+
+Les 67 tests UNITAIRES n'ont besoin ni de base de données, ni de réseau, ni de clé d'API. Les 36
+tests d'INTÉGRATION et d'API (marqueur pytest « integration ») s'exécutent sur une base Neo4j
+dédiée.
+
+2.2 Exemple de test unitaire : la garantie par source
+-----------------------------------------------------
+
+    def test_source_guarantee_keeps_lone_top_hit():
+        ...
+
+Ce test construit trois classements où un élément n'est premier que dans une seule liste et
+vérifie que fuse_top_k(..., guarantee=1) le conserve, alors que la RRF pure (guarantee=0)
+l'écarte. Il fige le comportement corrigé après le cas Q62 : si quelqu'un modifiait la fusion
+par erreur, le test échouerait.
+
+2.3 Exemple de test d'intégration : jamais de fuite
+---------------------------------------------------
+
+    @pytest.mark.parametrize("strategy", STRATEGIES)
+    def test_retrieval_never_returns_unauthorized_content(integration_services, strategy):
+        ...
+
+Pour CHAQUE stratégie de recherche (vector, lexical, hybrid, graph, hybrid_graph), le test
+interroge la base au nom d'un utilisateur sans accès à certains documents et vérifie qu'aucun
+passage de ces documents n'est renvoyé. La paramétrisation (@pytest.mark.parametrize) exécute le
+même test cinq fois : c'est ce qui explique que 99 fonctions produisent 103 cas.
+
+2.4 La fixture d'intégration
+----------------------------
+
+Une « fixture » pytest prépare un environnement partagé par plusieurs tests. Celle des tests
+d'intégration (tests/conftest.py, integration_services) :
+
+  - lit NEO4J_TEST_URI et NEO4J_TEST_PASSWORD ; si elles sont absentes, les tests d'intégration
+    sont SAUTÉS (et non échoués) ;
+  - VIDE la base de test, puis ingère le vrai corpus de 35 documents ;
+  - est partagée par toute la session de tests (une seule ingestion).
+
+Comme elle vide la base, elle ne doit JAMAIS pointer vers une base contenant des données utiles.
+
+2.5 Tester sans LLM
+-------------------
+
+Trois techniques de « doubles de test » remplacent un vrai fournisseur :
+
+  - ScriptedLLM (core/llm.py) : une fonction calcule la réponse à partir du prompt. On simule un
+    LLM qui invente une citation [C99], qui ne cite rien, ou qui tombe en panne, et on vérifie que
+    le workflow retire la citation, bascule sur l'extractif ou signale la panne ;
+  - httpx.MockTransport : simule les réponses HTTP d'une API compatible Chat Completions (429 puis
+    succès, 401, format inattendu) ;
+  - un faux client Anthropic : vérifie les paramètres envoyés (repli côté serveur, absence de
+    température), le traitement d'un refus et l'obligation de choisir un modèle.
+
+Ces tests prouvent que la plateforme GÈRE correctement un LLM ; ils ne disent rien de la QUALITÉ
+des réponses d'un vrai LLM, qui n'a pas été mesurée.
+
+2.6 Contrôles complémentaires (intégration continue)
+---------------------------------------------------
+
+À chaque envoi sur GitHub (.github/workflows/ci.yml) : ruff (analyse statique et règles de
+sécurité), tests unitaires, tests d'intégration sur un service Neo4j éphémère (avec Tesseract
+installé pour le document scanné), compilation de l'interface, audit des dépendances (pip-audit)
+et recherche de secrets (gitleaks).
+
+
+3. LE BANC D'ÉVALUATION : VUE D'ENSEMBLE
+=======================================
+
+Le script evaluation/run_evaluation.py exécute des SECTIONS indépendantes :
+
+    Section          Ce qui est mesuré                                    Fichier produit
+    ---------------  ---------------------------------------------------  ------------------------
+    ingestion        durées, statuts, formats, anomalies                  ingestion.json
+    kg               taille et qualité du graphe, provenance              kg_quality.json
+    extraction       précision / rappel / F1 des relations et mentions,   extraction.json
+                     résolution d'entités
+    retrieval        classement des documents par stratégie               retrieval_summary.json
+                                                                          retrieval_per_question.csv
+    qa               réponses de bout en bout par architecture            qa_summary.json
+                                                                          qa_per_question.csv
+    ablations        seuil de suffisance, relance                         ablations_*.{json,csv}
+    experts          classement d'experts vs baseline                     experts.json
+    recommendations  recommandations par mode                             recommendations.json
+
+Chaque campagne écrit aussi environment.json : commit Git, indicateur « code modifié depuis le
+commit », versions de Neo4j et Python, encodeur, paramètres. Puis evaluation/report.py produit
+RESULTATS.md et les figures À PARTIR DE CES FICHIERS : aucune valeur n'est saisie à la main.
+
+
+4. LE CORPUS ET LES VÉRITÉS TERRAIN
+==================================
+
+4.1 Pourquoi un corpus synthétique ?
+------------------------------------
+
+Les documents d'une banque réelle sont confidentiels et ne peuvent pas figurer dans un dépôt ni
+dans un mémoire. Le corpus « Orizia Banque » (35 documents) a été rédigé pour le projet, en y
+intégrant volontairement les difficultés rencontrées en pratique :
+
+  - versions successives d'une procédure (KYC 1.0 et 2.0) ;
+  - valeurs contradictoires entre documents (revue à 12 ou 24 mois ; endettement à 33 ou 40 %) ;
+  - doublon exact (D31) et copie de travail (D32) ;
+  - document scanné (D30), lu par OCR ;
+  - cinq documents à diffusion restreinte ;
+  - un mémo contenant une injection de prompt (D33).
+
+4.2 Les annotations (data/synthetic_data/gold/)
+-----------------------------------------------
+
+  - RELATIONS attendues pour chaque document, selon un guide d'annotation écrit
+    (ANNOTATION_GUIDE.md) qui dit quand annoter et quand ne pas annoter chaque type de relation ;
+    les arbitrages sont documentés ;
+  - 66 QUESTIONS (questions.yaml) réparties en dix catégories. Pour chacune :
+
+        id, category, question
+        gold_docs      : documents pertinents avec une pertinence graduée
+                         (2 = essentiel, 1 = utile)
+        evidence       : extraits attendus
+        answer_keywords: groupes de mots-clés ; chaque groupe accepte des variantes,
+                         et TOUS les groupes doivent être présents
+        user           : compte qui pose la question (questions d'accès)
+        expected_abstain, forbidden, expect_conflict, expect_ambiguity : selon le cas
+
+    Exemple réel : Q01 « Quel est le seuil de détention retenu pour identifier le bénéficiaire
+    effectif d'une personne morale ? » -> gold_docs D02 (2), D01 (1), D29 (1) ; mot-clé « 25 ».
+
+  - EXPERTS attendus pour 15 domaines (experts_gold.yaml) ;
+  - RECOMMANDATIONS attendues pour 10 documents sources, et documents interdits (doublons, mémo
+    piégé) (recommendations_gold.yaml) ;
+  - 34 cas de RÉSOLUTION D'ENTITÉS (entity_resolution_gold.yaml), dont des cas négatifs.
+
+
+5. LE PROTOCOLE : ÉVITER DE SE TROMPER SOI-MÊME
+==============================================
+
+Le principal danger d'un projet où la même personne écrit le corpus, les questions et le système
+est le SUR-AJUSTEMENT : on règle le système sur les exemples qu'on connaît, et il paraît
+excellent... sur ces exemples. Quatre mesures limitent ce risque.
+
+  1. PARTITION DES DOCUMENTS pour l'extraction : les règles ont été mises au point sur D01-D20
+     uniquement ; D21-D35 servent de test.
+  2. QUESTIONS DE DÉVELOPPEMENT : seules 17 questions (liste development_questions de
+     questions.yaml) pouvaient être observées pendant la mise au point des heuristiques ; les 49
+     autres n'ont jamais été inspectées avant la campagne. Les résultats sont rapportés
+     SÉPARÉMENT pour les deux groupes.
+  3. GEL DE LA CONFIGURATION : après le choix de l'encodeur, la configuration a été figée et la
+     campagne principale exécutée.
+  4. JOURNAL POST-GEL (evaluation/JOURNAL_DEVELOPPEMENT.md) : toute modification ultérieure est
+     notée avec sa motivation et ses effets, rapportés à part de la campagne principale.
+
+Comparaison équitable des architectures : toutes partagent le MÊME workflow (analyse, recherche,
+suffisance, relance, génération, vérification), les mêmes droits, le même k ; seule la stratégie
+de recherche change.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | L'écart entre questions de développement (exactitude 0,882) et questions jamais    |
+    | inspectées (0,694) EST la mesure du sur-ajustement. Le chiffre honnête est 0,694.  |
+    +------------------------------------------------------------------------------------+
+
+
+6. LES MÉTRIQUES, EXPLIQUÉES
+===========================
+
+6.1 Recherche documentaire (evaluation/metrics.py)
+--------------------------------------------------
+
+On compare le classement des DOCUMENTS (déduit des passages retrouvés) aux documents pertinents.
+
+  Recall@k     part des documents pertinents présents dans les k premiers résultats.
+               « Ai-je retrouvé ce qu'il fallait ? »
+
+  Precision@k  part des k premiers résultats qui sont pertinents (le dénominateur est
+               TOUJOURS k : un système qui renvoie moins de k documents est pénalisé).
+               « Ce que je montre est-il utile ? » Remarque : si une question n'a que 2
+               documents pertinents, Precision@5 ne peut pas dépasser 0,4.
+
+  MRR          inverse du rang du premier document pertinent (1 s'il est premier, 0,5 s'il
+               est deuxième...), moyenné sur les questions.
+
+  nDCG@k       métrique principale (Järvelin et Kekäläinen, 2002). Elle récompense les
+               documents pertinents placés HAUT, et les documents ESSENTIELS plus que les
+               utiles :
+
+                   gain(d)  = 2^pertinence - 1        (essentiel : 3 ; utile : 1 ; autre : 0)
+                   DCG@k    = somme sur i de gain(d_i) / log2(i + 1)
+                   nDCG@k   = DCG@k / DCG@k du classement idéal          (entre 0 et 1)
+
+  Couverture des preuves : part des extraits attendus (evidence) présents dans les passages
+               retrouvés.
+
+Exemple de calcul de nDCG@3 : documents pertinents A (essentiel) et B (utile) ; classement
+renvoyé : B, X, A.
+
+    DCG    = 1/log2(2) + 0/log2(3) + 3/log2(4) = 1 + 0 + 1,5 = 2,5
+    idéal  = A, B, X : 3/log2(2) + 1/log2(3) = 3 + 0,631 = 3,631
+    nDCG@3 = 2,5 / 3,631 = 0,689
+
+6.2 Questions-réponses
+----------------------
+
+  Exactitude   une question est correcte si (a) la réponse n'est PAS une abstention, (b) TOUS
+               les groupes de mots-clés attendus sont présents (avec variantes acceptées,
+               comparaison sans casse ni accents et avec une frontière de mot à gauche, pour que
+               « 25 » ne corresponde pas à « 2025 »), (c) aucune chaîne interdite n'apparaît.
+               Pour une question où l'abstention est attendue : correcte si et seulement si la
+               plateforme s'abstient sans contenu interdit.
+
+  Rappel d'abstention   part des questions sans réponse accessible où la plateforme s'abstient.
+  Précision d'abstention part des abstentions qui étaient attendues.
+  Abstention abusive     part des questions qui ont une réponse où la plateforme s'abstient.
+
+  Fiabilité    citations invalides (inventées), fuites d'accès (document non autorisé dans le
+               contexte ou dans les faits), chaînes interdites, taux d'appui des phrases,
+               précision des citations (part des documents cités qui sont pertinents).
+
+  Contradictions et ambiguïtés : part des questions concernées où la plateforme les signale.
+
+6.3 Experts, recommandations, extraction
+----------------------------------------
+
+  Experts          Precision@1, Recall@3, nDCG@3, MRR, contre une baseline « nombre de
+                   mentions » (compter les passages qui citent la personne dans le domaine).
+  Recommandations  Precision@5, Recall@5, nDCG@5, MRR, et nombre de doublons ou de mémo piégé
+                   recommandés (doit être 0).
+  Extraction       précision = relations extraites correctes / relations extraites ;
+                   rappel = relations attendues trouvées / relations attendues ;
+                   F1 = moyenne harmonique 2PR / (P + R).
+
+
+7. L'ANALYSE STATISTIQUE
+=======================
+
+Avec 66 questions (55 pour la recherche), une différence de quelques centièmes peut être due au
+hasard du choix des questions. Deux outils évitent de surinterpréter.
+
+7.1 L'intervalle de confiance par bootstrap
+-------------------------------------------
+
+Idée : on ne peut pas reposer 66 nouvelles questions, mais on peut SIMULER d'autres jeux de
+questions plausibles en tirant au hasard, avec remise, 66 questions parmi les 66 existantes. On
+calcule la moyenne sur chaque tirage, 2 000 fois, et on garde les percentiles 2,5 % et 97,5 % :
+c'est l'intervalle de confiance à 95 % (bootstrap percentile).
+
+    means = sorted(statistics.fmean(rng.choices(values, k=n)) for _ in range(n_resamples))
+    return (percentile(means, alpha / 2), percentile(means, 1 - alpha / 2))
+
+La graine est fixée (42) : les intervalles sont identiques d'une exécution à l'autre.
+
+Exemple : exactitude de l'architecture finale 0,742 [0,64 ; 0,85]. Le vrai niveau pourrait
+raisonnablement se situer n'importe où entre 0,64 et 0,85.
+
+7.2 Les comparaisons appariées
+------------------------------
+
+Pour comparer deux architectures, on utilise le fait qu'elles répondent aux MÊMES questions :
+
+  - différence moyenne question par question, avec un intervalle bootstrap APPARIÉ (on tire des
+    questions, pas des scores indépendants) ;
+  - test exact des SIGNES : on compte les questions où A fait mieux (gains), moins bien (pertes),
+    et on ignore les égalités. Si A et B étaient équivalents, gains et pertes suivraient une loi
+    binomiale de paramètre 0,5. La p-valeur est la probabilité d'un déséquilibre au moins aussi
+    marqué.
+
+    tail = sum(math.comb(n, i) for i in range(0, min(wins, losses) + 1)) / 2 ** n
+    p_value = min(1.0, 2 * tail)
+
+Exemple réel : architecture finale contre RAG hybride (exactitude) : 11 gains, 2 pertes, 53
+égalités, p = 0,0225. Contre l'hybride à graphe fixe : 0 gain, 2 pertes, p = 0,5 (pas de
+différence démontrée).
+
+
+8. LES RÉSULTATS PRINCIPAUX
+==========================
+
+Source unique : evaluation/results/RESULTATS.md (configuration gelée, encodeur WordLlama,
+générateur extractif hors-ligne, commit cabb1d2).
+
+  Ingestion       35 fichiers en 18,45 s ; ré-exécution 0,38 s ; 169 passages
+  Extraction      relations F1 0,984 (D01-D20) et 0,830 (D21-D35, rappel 0,717) ;
+                  résolution d'entités 34/34
+  Recherche       nDCG@5 : vectoriel 0,720 ; BM25 0,831 ; hybride 0,803 ; graphe seul 0,708 ;
+  (55 questions)  hybride + graphe fixe 0,813 ; final routé 0,839 [0,78 ; 0,90] ;
+                  couverture des preuves du final 0,943 ; 0 fuite
+  Réponses        exactitude : vectoriel 0,651 ; hybride 0,606 ; GraphRAG 0,515 ;
+  (66 questions)  hybride + graphe fixe 0,773 ; final 0,742 [0,64 ; 0,85]
+                  final : développement 0,882, jamais inspectées 0,694
+                  0 citation invalide, 0 fuite, 0 chaîne interdite (toutes architectures)
+  Abstention      final : rappel 0,909, précision 0,5, abstentions abusives 18,2 %
+  Experts         nDCG@3 0,975 contre 0,911 (baseline) ; p = 0,375 (non significatif,
+                  15 domaines)
+  Recommandations nDCG@5 hybride 0,908 contre 0,648 (contenu seul) ; p = 0,0039
+  Post-gel        final : exactitude 0,742 -> 0,758 ; jamais inspectées 0,694 -> 0,694
+
+Lecture d'ensemble :
+  - la recherche hybride FINALE est la meilleure en moyenne, mais son avance sur BM25 n'est pas
+    significative ; BM25 est une référence très forte sur ce corpus ;
+  - l'apport du graphe est net sur les questions relationnelles et multi-sauts EN EXACTITUDE
+    (0,12 -> 0,62 et 0,30 -> 0,60 par rapport au RAG vectoriel) ;
+  - la fiabilité (aucune citation inventée, aucune fuite) est obtenue par construction ;
+  - le point faible est l'abstention abusive, due au contrôle de suffisance lexical.
+
+Les hypothèses de recherche (mémoire, chapitre 6) : H1 partiellement validée, H2 validée, H3
+partiellement validée, H4 non démontrée, H5 validée.
+
+
+9. LIRE LES FICHIERS DE RÉSULTATS
+================================
+
+    evaluation/results/
+      RESULTATS.md                    synthèse lisible (générée)
+      wordllama/                      campagne principale (configuration gelée)
+      wordllama_postgel/              modification post-gel
+      spacy/                          ablation de l'encodeur
+      figures/                        graphiques (générés)
+
+Les fichiers *_per_question.csv permettent l'analyse d'erreurs : pour chaque question et
+architecture, la catégorie, le groupe (développement ou non), le statut, la correction, les
+groupes de mots-clés trouvés, les documents cités, les fuites, l'usage de la relance, la latence
+et le début de la réponse. C'est en les lisant que les causes d'erreur (paraphrases, mot outil
+manquant, chaîne multi-sauts incomplète) ont été identifiées.
+
+
+10. REPRODUCTIBILITÉ
+===================
+
+  - versions des dépendances figées (requirements.txt, package-lock.json) ;
+  - corpus généré de façon déterministe ; graines fixes (MinHash, bootstrap) ;
+  - requêtes avec ORDER BY et départage par identifiant, scores arrondis avant tri ;
+  - environment.json : commit et état du code pour chaque campagne ;
+  - compare_runs : deux campagnes séparées par une réingestion complète donnent 0 différence sur
+    1 056 lignes de résultats ;
+  - commande unique : bash scripts/run_evaluation_campaign.sh.
+
+
+11. MENACES À LA VALIDITÉ
+========================
+
+  Interne     corpus, annotations, règles et heuristiques conçus par la même personne ;
+              partiellement maîtrisé par les partitions, le gel et le journal.
+  Externe     corpus synthétique, petit et régulier : les résultats valent pour ce banc
+              d'essai, pas pour des documents réels sans nouvelle évaluation.
+  Construit   l'exactitude par mots-clés mesure la présence des éléments attendus, pas la
+              qualité globale d'une réponse ; l'appui lexical approxime la fidélité. Avec un
+              LLM, il faudrait ajouter une évaluation humaine ou des métriques de type RAGAS
+              (Es et al., 2024), en tenant compte des biais des LLM juges (Zheng et al., 2023).
+  Conclusion  66 questions : intervalles larges ; plusieurs écarts non significatifs.
+  Encodeur    encodeurs légers hors-ligne : les conclusions sur la recherche hybride en
+              dépendent.
+
+
+12. QUESTIONS DE JURY POSSIBLES
+==============================
+
+    +------------------------------------------------------------------------------------+
+    | « Vos résultats ne sont-ils pas biaisés, puisque vous avez tout écrit ? »          |
+    | Si, en partie, et le protocole le mesure : 0,882 sur les questions de              |
+    | développement contre 0,694 sur les questions jamais inspectées. Nous mettons en    |
+    | avant le second chiffre. La validation sur des documents réels, avec des questions |
+    | posées par les métiers, est la première perspective.                               |
+    +------------------------------------------------------------------------------------+
+
+    +------------------------------------------------------------------------------------+
+    | « Pourquoi ne pas utiliser un LLM comme juge ? »                                   |
+    | Faute de clé, ce n'était pas possible ; et ce n'était pas nécessaire pour un       |
+    | générateur extractif, dont les sorties se vérifient par mots-clés. Avec un LLM     |
+    | générateur, un juge LLM serait utile mais biaisé (Zheng et al., 2023) : il         |
+    | faudrait le calibrer sur un échantillon annoté par un humain.                      |
+    +------------------------------------------------------------------------------------+
+
+    +------------------------------------------------------------------------------------+
+    | « Pourquoi l'hybride à graphe fixe a-t-il une meilleure exactitude (0,773) que     |
+    | l'architecture finale (0,742) ? »                                                  |
+    | L'écart (2 questions sur 66) n'est pas significatif (p = 0,5). Les deux questions  |
+    | perdues montrent les deux effets du routage : Q14 (multi-documents) est classée    |
+    | factuelle, le poids du graphe baisse (0,5) et un passage utile sort du contexte ;  |
+    | Q28 (multi-sauts) reçoit au contraire un poids plus fort (1,5), et la réponse      |
+    | suit des chemins qui ne contiennent pas l'élément attendu. En recherche            |
+    | documentaire, c'est le final qui est devant (0,839 contre 0,813). Les deux         |
+    | configurations sont proches ; le routage protège surtout les questions factuelles. |
+    +------------------------------------------------------------------------------------+
