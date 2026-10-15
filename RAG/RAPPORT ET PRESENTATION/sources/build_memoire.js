@@ -89,8 +89,24 @@ function tableBlock(lines, caption) {
   const n = header.length;
   const lengths = Array.from({ length: n }, (_, i) =>
     Math.max(4, Math.min(48, Math.max(header[i].length, ...rows.map((r) => (r[i] || "").length)))));
-  const total = lengths.reduce((a, b) => a + b, 0);
-  const widths = lengths.map((l) => Math.floor((TEXT_WIDTH * l) / total));
+  // Largeur minimale : le mot le plus long de la colonne (en-tête en gras compris) doit tenir
+  // sur une ligne ; le reste de la largeur est réparti proportionnellement au contenu.
+  // Largeur approximative d'un mot en twips (Times 9,5 pt) : capitales et chiffres plus larges.
+  const wordWidth = (w) => [...w].reduce((a, ch) => a + (/[A-Z0-9_@%]/.test(ch) ? 135 : 100), 0);
+  const longestWord = (t) => Math.max(0, ...String(t || "").replace(/[*`]/g, "").split(/\s+/).map(wordWidth));
+  const minWidths = Array.from({ length: n }, (_, i) =>
+    Math.max(Math.round(longestWord(header[i]) * 1.1), ...rows.map((r) => longestWord(r[i]))) + 220);
+  const widths = new Array(n).fill(0);
+  const fixed = new Set();
+  for (let pass = 0; pass < n; pass += 1) {
+    const free = [...Array(n).keys()].filter((i) => !fixed.has(i));
+    const available = TEXT_WIDTH - [...fixed].reduce((a, i) => a + widths[i], 0);
+    const freeTotal = free.reduce((a, i) => a + lengths[i], 0);
+    free.forEach((i) => { widths[i] = Math.floor((available * lengths[i]) / freeTotal); });
+    const tooNarrow = free.filter((i) => widths[i] < minWidths[i]);
+    if (!tooNarrow.length) break;
+    tooNarrow.forEach((i) => { widths[i] = minWidths[i]; fixed.add(i); });
+  }
   widths[n - 1] += TEXT_WIDTH - widths.reduce((a, b) => a + b, 0);
   const border = { style: BorderStyle.SINGLE, size: 4, color: "A6A6A6" };
   const borders = { top: border, bottom: border, left: border, right: border };
