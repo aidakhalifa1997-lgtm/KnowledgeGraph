@@ -5,8 +5,8 @@ Ce fichier est produit par `python -m evaluation.report` à partir des fichiers 
 sont des intervalles de confiance à 95 % (bootstrap percentile, 2 000 rééchantillonnages).
 
 - Campagne principale (configuration gelée) : `results/wordllama/`, commit `cabb1d2`, 2026-10-11T18:33:18+00:00, Neo4j 5.26.31 community, Python 3.13.16, 4 processeurs.
-- Encodeur : wordllama (256 dimensions) ; LLM : désactivé (générateur extractif hors-ligne) ; top-k = 8 passages ; RRF k = 60 ; seuil de suffisance = 0.55.
-- Corpus et questions **synthétiques**, rédigés par l'auteur de la plateforme : les résultats valent pour ce
+- Encodeur : wordllama (256 dimensions) ; LLM : désactivé (générateur extractif hors-ligne) ; top-k = 8 passages ; RRF k = 60 ; seuil de suffisance = 0,55.
+- Corpus et questions **synthétiques**, rédigés par l'auteure de la plateforme : les résultats valent pour ce
   banc d'essai et ne se généralisent pas sans validation sur des documents réels.
 
 ## 1. Ingestion
@@ -138,11 +138,11 @@ Accord du classifieur de questions avec la catégorie annotée (41 questions de 
 
 | Variante | Exactitude | Jamais inspectées | Rappel d'abstention | Abstention abusive | Taux de relance |
 |---|---|---|---|---|---|
-| seuil 0.35 | 0,742 [0,64 ; 0,85] | 0,714 | 0,727 | 0,127 | 0,24 |
-| seuil 0.45 | 0,742 [0,64 ; 0,85] | 0,714 | 0,818 | 0,164 | 0,27 |
-| seuil 0.55 | 0,742 [0,64 ; 0,85] | 0,694 | 0,909 | 0,182 | 0,32 |
-| seuil 0.65 | 0,727 [0,62 ; 0,83] | 0,673 | 1,000 | 0,218 | 0,36 |
-| seuil 0.75 | 0,682 [0,58 ; 0,80] | 0,612 | 1,000 | 0,327 | 0,48 |
+| seuil 0,35 | 0,742 [0,64 ; 0,85] | 0,714 | 0,727 | 0,127 | 0,24 |
+| seuil 0,45 | 0,742 [0,64 ; 0,85] | 0,714 | 0,818 | 0,164 | 0,27 |
+| seuil 0,55 | 0,742 [0,64 ; 0,85] | 0,694 | 0,909 | 0,182 | 0,32 |
+| seuil 0,65 | 0,727 [0,62 ; 0,83] | 0,673 | 1,000 | 0,218 | 0,36 |
+| seuil 0,75 | 0,682 [0,58 ; 0,80] | 0,612 | 1,000 | 0,327 | 0,48 |
 | sans relance (seuil 0,55) | 0,742 [0,64 ; 0,85] | 0,694 | 0,909 | 0,200 | 0,00 |
 
 ## 7. Recherche d'experts (15 domaines)

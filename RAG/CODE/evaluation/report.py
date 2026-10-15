@@ -269,8 +269,8 @@ def build_markdown() -> str:
         f"{env['cpu_count']} processeurs.",
         f"- Encodeur : {env['embedding_provider']} ({env['embedding_dim']} dimensions) ; LLM : "
         f"{'activé' if env['llm_enabled'] else 'désactivé (générateur extractif hors-ligne)'} ; top-k = "
-        f"{env['retrieval_top_k']} passages ; RRF k = {env['rrf_k']} ; seuil de suffisance = {env['sufficiency_threshold']}.",
-        "- Corpus et questions **synthétiques**, rédigés par l'auteur de la plateforme : les résultats valent pour ce",
+        f"{env['retrieval_top_k']} passages ; RRF k = {env['rrf_k']} ; seuil de suffisance = {str(env['sufficiency_threshold']).replace('.', ',')}.",
+        "- Corpus et questions **synthétiques**, rédigés par l'auteure de la plateforme : les résultats valent pour ce",
         "  banc d'essai et ne se généralisent pas sans validation sur des documents réels.",
         "",
         "## 1. Ingestion",
@@ -399,7 +399,7 @@ def build_markdown() -> str:
         "## 6. Ablations du workflow (hybride final)",
         "",
         table(["Variante", "Exactitude", "Jamais inspectées", "Rappel d'abstention", "Abstention abusive", "Taux de relance"],
-              [[k.replace("seuil_", "seuil ").replace("sans_relance", "sans relance (seuil 0,55)"),
+              [[k.replace("seuil_", "seuil ").replace(".", ",").replace("sans_relance", "sans relance (seuil 0,55)"),
                 ci(v["accuracy_overall"]), fmt(v["accuracy_by_split"]["jamais_inspectee"]["mean"]),
                 fmt(v["abstention_recall"]), fmt(v["false_abstention_rate"]), fmt(v["expansion_rate"], 2)]
                for k, v in abl.items()]),
