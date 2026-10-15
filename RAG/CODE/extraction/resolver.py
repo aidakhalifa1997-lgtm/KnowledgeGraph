@@ -1,7 +1,7 @@
 """Résolution d'entités : relier une mention textuelle à une entité canonique.
 
 Cascade (de la plus sûre à la moins sûre), inspirée du pipeline *blocking -> matching* des
-travaux sur la résolution d'entités (Christophides et al., 2020) :
+travaux sur la résolution d'entités (Christophides et al., 2021) :
 
 1. correspondance exacte sur le nom ou un alias normalisé (casse, accents, ponctuation) ;
 2. retrait des civilités (M., Mme, Dr...) puis nouvel essai ;

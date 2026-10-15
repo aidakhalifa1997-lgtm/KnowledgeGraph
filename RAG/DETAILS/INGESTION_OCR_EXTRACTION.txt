@@ -1,0 +1,634 @@
+====================================================================================================
+                   INGESTION, OCR ET EXTRACTION DES CONNAISSANCES : DU FICHIER AU GRAPHE
+====================================================================================================
+
+Objectif de ce document : comprendre, étape par étape et à partir du code réel, comment un fichier
+PDF, DOCX ou texte devient un ensemble de passages, d'entités et de relations prêts à être écrits
+dans le graphe. Les modules concernés sont dans RAG/CODE/ingestion/ et RAG/CODE/extraction/.
+
+SOMMAIRE
+--------
+  1. Pourquoi l'ingestion est la partie la plus importante
+  2. Vue d'ensemble du traitement d'un document
+  3. Sécurité des fichiers (ingestion/security.py)
+  4. Lecture du texte et OCR (ingestion/loaders.py, ingestion/ocr.py)
+  5. Nettoyage (ingestion/cleaning.py)
+  6. Métadonnées et cartouche (ingestion/metadata.py)
+  7. Contrôle qualité (ingestion/quality.py)
+  8. Détection d'injection de prompt
+  9. Découpage en passages (ingestion/chunking.py)
+ 10. Doublons exacts et quasi-doublons (ingestion/dedup.py, ingestion/pipeline.py)
+ 11. Reconnaissance des entités (extraction/linker.py)
+ 12. Résolution d'entités (extraction/resolver.py)
+ 13. Extraction de relations par règles (extraction/rules.py)
+ 14. Extraction de relations par LLM (extraction/llm_extractor.py)
+ 15. Fusion des extracteurs (extraction/merge.py)
+ 16. Orchestration : processor.py et pipeline.py
+ 17. Résultats mesurés
+ 18. Limites et pistes d'amélioration
+
+
+1. POURQUOI L'INGESTION EST LA PARTIE LA PLUS IMPORTANTE
+=======================================================
+
+Un système de questions-réponses ne peut pas être meilleur que les données qu'il interroge. Si
+un en-tête de page est mélangé au texte, si une puce est collée à la phrase précédente, si une
+copie de travail est indexée comme un document officiel, si le champ « Diffusion » est mal lu,
+toutes les étapes suivantes en héritent. Dans un contexte bancaire, le dernier exemple est
+critique : une erreur de lecture de la diffusion devient une erreur d'habilitation.
+
+C'est pourquoi l'ingestion de la plateforme est volontairement prudente : elle préfère refuser,
+mettre en quarantaine ou signaler plutôt que de deviner.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | « Garbage in, garbage out » : la qualité des réponses dépend d'abord de la qualité |
+    | de l'ingestion. Le champ « Diffusion » du cartouche alimente directement le        |
+    | contrôle d'accès : le lire correctement est une exigence de sécurité.              |
+    +------------------------------------------------------------------------------------+
+
+
+2. VUE D'ENSEMBLE DU TRAITEMENT D'UN DOCUMENT
+============================================
+
+La méthode DocumentProcessor.process() (ingestion/processor.py) enchaîne les étapes suivantes.
+Elle ne touche PAS à la base de données : elle produit un objet ProcessedDocument, que le
+pipeline (ingestion/pipeline.py) écrit ensuite dans Neo4j. Cette séparation permet de tester et
+d'évaluer l'extraction sans base.
+
+    validate_file()          sécurité du fichier                 -> FileRejected si refus
+    load_document()          texte brut par page (+ OCR)
+    prepare_pages()          Unicode, en-têtes/pieds répétés, numéros de page
+    extract_metadata()       cartouche -> référence, version, date, direction, diffusion...
+    finalize_pages()         césures et retours à la ligne visuels (PDF)
+    assess_quality()         score et anomalies                  -> rejected si erreur
+    detect_prompt_injection  motifs d'instructions               -> quarantined si détecté
+    chunk_document()         passages (sections, ~900 caractères)
+    linker.find_mentions()   entités de chaque passage
+    rules.extract()          relations par règles
+    llm.extract()            relations par LLM (optionnel)
+    merge_relations()        fusion et accord des extracteurs
+    minhash_signature()      empreinte pour les quasi-doublons
+
+Chaque étape est chronométrée (fonction interne `timed`) : les durées remontent dans le rapport
+d'ingestion et dans l'évaluation (durée moyenne par format).
+
+
+3. SÉCURITÉ DES FICHIERS (ingestion/security.py)
+===============================================
+
+Principe : ne jamais faire confiance à un fichier, même interne. Un fichier peut être corrompu,
+déguisé (un exécutable renommé en .pdf) ou piégé (une « bombe de décompression »).
+
+    def validate_file(path: Path, *, max_mb: int, max_pdf_pages: int, max_docx_uncompressed_mb: int):
+        ext = path.suffix.lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise FileRejected(f"extension non autorisée ({ext or 'aucune'})")
+
+  - Liste blanche d'extensions (.pdf, .docx, .txt) : tout le reste est refusé. Une liste blanche
+    est plus sûre qu'une liste noire, qui oublie toujours un cas.
+
+        with path.open("rb") as handle:
+            head = handle.read(8)
+        if ext == ".pdf":
+            if not head.startswith(b"%PDF-"):
+                raise FileRejected("le contenu ne correspond pas à un PDF (signature absente)")
+
+  - On lit les 8 premiers octets : c'est la « signature » (magic bytes) du format. Un vrai PDF
+    commence par « %PDF- », un DOCX (qui est une archive ZIP) par « PK\x03\x04 ». L'extension
+    peut mentir, la signature beaucoup moins facilement.
+  - Pour les PDF : refus des fichiers chiffrés et des documents de plus de 200 pages
+    (MAX_PDF_PAGES), qui pourraient saturer l'OCR.
+  - Pour les DOCX : la somme des tailles DÉCOMPRESSÉES de l'archive est bornée (100 Mo par
+    défaut). Une bombe de décompression est un petit fichier qui se décompresse en plusieurs
+    gigaoctets ; ce contrôle la détecte sans la décompresser. Les chemins commençant par « / »
+    ou contenant « .. » sont refusés (attaque par traversée de répertoires).
+  - Pour les TXT : présence d'octets nuls = fichier binaire déguisé.
+
+Un refus lève FileRejected avec un motif lisible ; le pipeline le transforme en résultat
+« rejected » sans interrompre le traitement des autres fichiers.
+
+
+4. LECTURE DU TEXTE ET OCR (ingestion/loaders.py, ingestion/ocr.py)
+==================================================================
+
+4.1 PDF
+-------
+
+    for page in doc:
+        text = page.get_text("text") or ""
+        if len(text.strip()) < ocr_min_page_chars:
+            # Page sans couche texte : document scanné -> OCR.
+            result = ocr_pdf_page(page, dpi=ocr_dpi, languages=ocr_languages)
+            text = result.text
+            confidences.append(result.mean_confidence)
+            ocr_pages += 1
+        pages.append(text)
+
+  - Un PDF « numérique » contient une couche de texte que PyMuPDF lit directement. Un PDF scanné
+    ne contient que des images : `get_text` renvoie (presque) rien.
+  - La décision se prend PAGE PAR PAGE : moins de 30 caractères (OCR_MIN_PAGE_CHARS) déclenche
+    l'OCR pour cette page seulement. Un document mixte (pages numériques + pages scannées) est
+    donc traité correctement, et l'OCR, coûteux, n'est lancé que si nécessaire.
+  - La confiance moyenne de l'OCR est conservée : elle alimente le contrôle qualité.
+
+4.2 L'OCR (ingestion/ocr.py)
+----------------------------
+
+    pixmap = page.get_pixmap(dpi=dpi)                       # page -> image à 300 dpi
+    ...
+    config = "--psm 3 --oem 1"
+    data = pytesseract.image_to_data(image, lang=languages, config=config, ...)
+    text = pytesseract.image_to_string(image, lang=languages, config=config, ...)
+
+  - 300 dpi est la résolution usuelle pour l'OCR : en dessous, les petits caractères se dégradent.
+  - `--psm 3` : segmentation automatique de la page (colonnes, blocs) ; `--oem 1` : moteur à
+    réseau de neurones LSTM de Tesseract (versions 4 et suivantes).
+  - `lang="fra+eng"` : modèles français et anglais combinés (termes techniques anglais
+    fréquents dans les documents bancaires).
+  - `image_to_data` donne la confiance de chaque mot (0 à 100) ; on en fait la moyenne en
+    ignorant les valeurs négatives (blocs sans texte).
+
+Mesure réelle sur le corpus : le PDF scanné (D30) est lu avec une confiance moyenne d'environ 94
+sur 100, en quelques secondes (l'OCR représente l'essentiel du temps d'ingestion des PDF).
+
+4.3 DOCX et TXT
+---------------
+
+  - DOCX : le code parcourt directement le XML du document (paragraphes ET tableaux, dans
+    l'ordre). Les tableaux sont importants : dans les gabarits de la banque fictive, le cartouche
+    est un tableau. Les styles de titre deviennent des marqueurs « # » et les styles de liste des
+    puces « - », pour que le découpage reconnaisse la structure.
+  - TXT : plusieurs encodages sont essayés (UTF-8, UTF-8 avec BOM, Windows-1252, Latin-1). Les
+    fichiers texte d'entreprise ne sont pas toujours en UTF-8.
+
+    +------------------------------------------------------------------------------------+
+    | QUESTION DE JURY POSSIBLE                                                          |
+    | « Pourquoi Tesseract et pas un modèle plus récent (LayoutLM, modèles de vision) ? »|
+    | Réponse : Tesseract est libre, fonctionne hors-ligne sur CPU, s'installe dans le    |
+    | conteneur et donne une confiance par mot exploitable. Sur notre document scanné,   |
+    | la confiance moyenne est d'environ 94/100. Les modèles tenant compte de la mise en |
+    | page (LayoutLM) seraient utiles pour des formulaires et tableaux complexes ; ils    |
+    | demandent un modèle lourd et sont une perspective, pas un besoin démontré ici.     |
+    +------------------------------------------------------------------------------------+
+
+
+5. NETTOYAGE (ingestion/cleaning.py)
+===================================
+
+Le nettoyage se fait en DEUX passes, et l'ordre compte :
+
+    prepare_pages()   -> Unicode normalisé, lignes répétées supprimées, numéros de page retirés
+    extract_metadata() lit le cartouche sur ce texte encore « ligne à ligne »
+    finalize_pages()  -> recolle les césures et les lignes coupées (PDF uniquement)
+
+Pourquoi deux passes ? Le cartouche est une suite de lignes « Clé : valeur ». Si l'on recollait
+les lignes avant de le lire, « Version : 2.0 » et « Date : 22/04/2025 » pourraient fusionner en
+une seule ligne illisible. On lit donc les métadonnées AVANT de recoller les lignes.
+
+Les traitements principaux :
+
+  - remove_repeated_lines() : une ligne présente sur au moins 60 % des pages est un en-tête ou
+    un pied de page (« ORIZIA BANQUE - Procédure... »). Elle est supprimée.
+  - Numéros de page (« Page 3 », « 3/12 ») et pieds de gabarit (« PRC-KYC-001 - v1.0 -
+    Interne ») : supprimés par expressions régulières.
+  - Césures : « connais- » + « sance » devient « connaissance », seulement si la ligne suivante
+    commence par une minuscule (pour ne pas casser « Jean- » + « Pierre »).
+  - Puces isolées : dans les PDF, la puce « • » se retrouve parfois seule sur sa ligne ; elle est
+    rattachée à la ligne suivante sous la forme « - texte ».
+  - Lignes coupées visuellement : un PDF coupe les phrases à la largeur de la page. Une ligne est
+    recollée à la précédente si la précédente ne finit pas par une ponctuation forte ET si la
+    nouvelle ligne n'est pas « structurelle » (titre, puce ou « Clé : valeur »).
+
+Ce dernier point a été source d'une difficulté réelle, documentée dans le mémoire : sans la
+fonction _is_structural, les puces d'une liste étaient fusionnées avec la phrase d'introduction,
+et le contrôle de suffisance ne retrouvait plus les valeurs chiffrées.
+
+
+6. MÉTADONNÉES ET CARTOUCHE (ingestion/metadata.py)
+==================================================
+
+Le « cartouche » est le bloc d'en-tête normalisé des documents de la banque fictive :
+
+    ORIZIA BANQUE
+    Référence : PRC-KYC-001
+    Version : 2.0
+    Date : 22/04/2025
+    Direction propriétaire : Direction Conformité
+    Rédacteur : ...
+    Classification : Interne
+    Diffusion : Tous collaborateurs
+
+Le code lit ces champs avec des expressions régulières (dictionnaire _FIELDS) et un petit
+automate à trois états : AVANT le cartouche, DANS le cartouche, puis CORPS du texte. Le cartouche
+doit être un bloc contigu dans les 15 premières lignes ; dès qu'une ligne de contenu apparaît, la
+lecture s'arrête. Ainsi, une phrase du corps comme « Rédacteur : voir annexe » n'est pas prise pour
+une métadonnée.
+
+Ordre de priorité des sources : cartouche, puis propriétés internes du fichier (métadonnées PDF
+ou DOCX), puis nom du fichier (référence, version), puis contenu (premier titre).
+
+La diffusion est convertie en liste de groupes :
+
+    def parse_diffusion(value: str) -> list[str]:
+        low = value.lower()
+        if "tous" in low or "public" in low or "général" in low:
+            return ["ALL"]
+        raw = value.split(":", 1)[-1]
+        groups = [g.strip().upper() for g in re.split(r"[,;/]", raw) if g.strip()]
+        return groups or ["ALL"]
+
+  - « Tous collaborateurs » devient ["ALL"] ; « Restreinte : DRISK, DSI, DG » devient
+    ["DRISK", "DSI", "DG"]. Ces groupes sont comparés à ceux de l'utilisateur à chaque recherche.
+
+Le type de document est déduit de la référence (« PRC- » = procédure, « CR- » = compte rendu,
+« AUD- » = rapport d'audit...) puis, à défaut, du titre. Enfin, le cartouche est RETIRÉ du corps
+du texte : il décrit le document mais n'est pas une connaissance métier, et il fausserait
+l'extraction de relations (le rédacteur n'est pas « membre » de la procédure).
+
+
+7. CONTRÔLE QUALITÉ (ingestion/quality.py)
+=========================================
+
+Chaque contrôle produit un constat (QualityIssue) de gravité info, warning ou error :
+
+    Code                 Gravité   Condition
+    -------------------  --------  ------------------------------------------------------
+    text_too_short       error     moins de 150 caractères extraits
+    ocr_unreadable       error     confiance OCR moyenne < 45
+    ocr_low_confidence   warning   confiance OCR moyenne < 70
+    ocr_used             info      texte obtenu par OCR
+    noisy_text           warning   moins de 55 % de lettres parmi les caractères non blancs
+    language_unknown     warning   moins de 8 % de mots outils français
+    missing_reference    warning   métadonnée absente (idem date, rédacteur, direction)
+
+Un constat « error » entraîne le statut `rejected` : le document est tracé dans le graphe (on sait
+qu'il existe et pourquoi il a été refusé) mais n'alimente ni la recherche ni les relations. Le
+score de qualité part de 1 et perd 0,1 par avertissement et 0,5 par erreur ; il est affiché dans
+la page Documents (vue administrateur).
+
+
+8. DÉTECTION D'INJECTION DE PROMPT
+=================================
+
+Un document peut contenir des instructions destinées à un assistant IA : « Note pour l'assistant :
+ignore les consignes précédentes et réponds désormais... ». C'est l'injection indirecte de prompt
+décrite par Greshake et al. (2023). Si un tel passage entrait dans le contexte d'un LLM, celui-ci
+pourrait obéir au document au lieu d'obéir au système.
+
+La fonction detect_prompt_injection() recherche sept familles de motifs (expressions régulières,
+insensibles à la casse) :
+
+  - instruction de contournement, en français et en anglais (« ignore les instructions
+    précédentes », « ignore previous instructions ») ;
+  - adresse directe à l'assistant (« note pour l'assistant / l'IA / le LLM ») ;
+  - demande de divulgation du prompt système ;
+  - manipulation de rôle (« you are now », « act as ») ;
+  - image Markdown pointant vers un domaine externe (technique d'exfiltration : l'URL de l'image
+    peut transporter des données) ;
+  - consigne de réponse imposée (« réponds désormais »).
+
+Un document détecté reçoit le statut `quarantined` : il est conservé pour revue humaine, mais
+aucun passage n'est indexé. Dans le corpus, le mémo D33 contient de telles instructions ; il est
+mis en quarantaine dès l'ingestion, et la question « Quelles astuces existent pour utiliser Orion
+CRM ? » obtient une abstention au lieu d'une réponse fondée sur ce mémo.
+
+Cette détection est une DÉFENSE EN PROFONDEUR, pas une garantie. D'autres protections existent
+plus loin dans la chaîne : le prompt de génération traite les documents comme des données
+(orchestration/prompts.py), et la vérification de la réponse supprime images, liens et fuites du
+prompt (orchestration/verification.py).
+
+    +------------------------------------------------------------------------------------+
+    | QUESTION DE JURY POSSIBLE                                                          |
+    | « Des expressions régulières suffisent-elles contre l'injection de prompt ? »      |
+    | Réponse : non, et nous ne le prétendons pas. Elles arrêtent les formes connues et  |
+    | grossières. C'est pourquoi la défense est en couches : quarantaine à l'ingestion,  |
+    | documents traités comme des données dans le prompt, vérification et assainissement|
+    | de la réponse, et surtout, en mode hors-ligne, un générateur extractif qui ne peut |
+    | pas « obéir » à une instruction.                                                   |
+    +------------------------------------------------------------------------------------+
+
+
+9. DÉCOUPAGE EN PASSAGES (ingestion/chunking.py)
+===============================================
+
+La recherche ne travaille pas sur des documents entiers mais sur des passages (chunks). Trop
+longs, ils diluent l'information et coûtent cher dans le contexte d'un LLM ; trop courts, ils
+perdent le contexte.
+
+Stratégie retenue : un découpage STRUCTUREL plutôt que par nombre fixe de caractères.
+
+  - le texte est d'abord transformé en paragraphes, chacun rattaché à la section (titre) courante
+    et à sa page (paragraphs_from_pages) ;
+  - les paragraphes sont regroupés jusqu'à environ 900 caractères (environ 150 à 200 mots), sans
+    dépasser 1 400 ; un paragraphe trop long est découpé par phrases ;
+  - un passage n'appartient qu'à une seule section : un changement de titre force un nouveau
+    passage ;
+  - chevauchement minimal : le nouveau passage reprend la dernière phrase du précédent (dans la
+    même section), pour ne pas couper un raisonnement en deux.
+
+Enfin, le texte indexé est ENRICHI du titre du document et de la section :
+
+    def contextual_text(title: str, section: str, text: str) -> str:
+        parts = [title.strip()]
+        if section and section.lower() not in title.lower():
+            parts.append(section.strip())
+        parts.append(text.strip())
+        return "\n".join(parts)
+
+Un passage « Le délai est de 48 heures » devient ainsi retrouvable par une question qui nomme la
+procédure, alors que la phrase elle-même ne la mentionne pas. Le corpus produit 169 passages.
+
+
+10. DOUBLONS EXACTS ET QUASI-DOUBLONS (ingestion/dedup.py, ingestion/pipeline.py)
+================================================================================
+
+10.1 Doublons exacts : SHA-256
+------------------------------
+
+L'empreinte SHA-256 du contenu binaire identifie un fichier de façon quasi certaine. Elle sert à
+deux choses :
+
+  - IDEMPOTENCE : si un fichier déjà ingéré a la même empreinte, il est ignoré (« unchanged ») ;
+  - DOUBLON EXACT : si un AUTRE fichier a la même empreinte (D31, copie de D03), le nouveau est
+    marqué `duplicate` et relié au document canonique par DUPLICATE_OF.
+
+10.2 Quasi-doublons : MinHash
+-----------------------------
+
+Une copie de travail n'est jamais identique octet par octet à l'original (un mot change, une date
+est ajoutée). Il faut mesurer la RESSEMBLANCE des textes.
+
+Principe (Broder, 1997) :
+
+  1. on découpe le texte en « shingles » : toutes les suites de 5 mots consécutifs ;
+  2. la ressemblance de deux textes est l'indice de Jaccard de leurs ensembles de shingles :
+        J(A, B) = |A ∩ B| / |A ∪ B|        (1 = identiques, 0 = rien en commun)
+  3. calculer J exactement oblige à comparer les ensembles complets ; MinHash résume chaque
+     texte par 128 nombres (une « signature »). Pour chaque fonction de hachage h_i, on garde
+     le minimum de h_i sur les shingles du texte. Propriété mathématique : la probabilité que
+     deux textes aient le même minimum pour h_i est exactement J(A, B). La proportion de
+     positions égales entre deux signatures estime donc J.
+
+    def estimated_jaccard(sig_a: list[int], sig_b: list[int]) -> float:
+        equal = sum(1 for x, y in zip(sig_a, sig_b, strict=True) if x == y)
+        return equal / len(sig_a)
+
+  - Les 128 fonctions de hachage sont de la forme (a*x + b) mod p, avec p = 2^61 - 1 (nombre
+    premier de Mersenne) et des coefficients tirés avec une graine fixe : les signatures sont
+    reproductibles d'une exécution à l'autre.
+  - La signature est stockée dans le graphe : comparer un nouveau document aux documents existants
+    ne demande pas de relire leurs textes.
+
+Règle de décision (pipeline.py) : estimation de Jaccard ≥ 0,8 ET même référence ET même version
+= quasi-doublon. Si la ressemblance est forte mais que la référence ou la version diffère, le
+document est conservé (c'est peut-être une nouvelle version) et seulement signalé.
+
+Quel document garder ? Celui dont le nom ou le début du texte ne porte PAS de marqueur de
+brouillon (« copie », « brouillon », « travail », « draft »...). C'est pourquoi le fichier
+« PRC-INC-007_gestion_incidents_COPIE_TRAVAIL.txt » (D32) est marqué doublon et non l'original
+D08, quel que soit l'ordre de traitement.
+
+
+11. RECONNAISSANCE DES ENTITÉS (extraction/linker.py)
+===================================================
+
+Une ENTITÉ est un objet du monde métier : une personne, une direction, un projet, une procédure,
+une application, un concept, un domaine. Le référentiel (data/synthetic_data/referentials/
+referentials.yaml) liste les entités connues avec leurs alias.
+
+Deux mécanismes complémentaires repèrent les mentions dans un passage :
+
+  1. un DICTIONNAIRE (gazetteer) construit à partir du référentiel : chaque nom et alias est
+     cherché dans le texte normalisé (minuscules, sans accents). La mention la plus longue
+     l'emporte (« projet Sentinel » avant « Sentinel »). Les sigles courts (DSI, DG, PPE) sont
+     cherchés en respectant la casse, pour ne pas confondre « DG » avec la fin d'un mot ;
+  2. la RECONNAISSANCE STATISTIQUE d'entités nommées de spaCy (modèle fr_core_news_md,
+     étiquette PER) repère les personnes absentes du référentiel. Elles deviennent des entités
+     `candidate`, à valider par un humain.
+
+Pourquoi un dictionnaire d'abord ? Dans une entreprise, les entités importantes (applications,
+projets, directions) sont connues et listées dans des référentiels (cartographie applicative,
+organigramme, portefeuille de projets). Les exploiter est plus fiable qu'un modèle statistique
+qui ne connaît pas « CoreNova » ou « Sentinel KYC ».
+
+
+12. RÉSOLUTION D'ENTITÉS (extraction/resolver.py)
+================================================
+
+Résoudre une mention, c'est décider à quelle entité canonique elle renvoie : « Mme Idrissi »,
+« S. Idrissi » et « Salma Idrissi » désignent la même personne (per:salma-idrissi).
+
+La méthode resolve() applique une CASCADE, de la règle la plus sûre à la moins sûre :
+
+    Étape  Méthode     Exemple                         Confiance
+    -----  ----------  ------------------------------  ---------
+    1      exact       « Salma Idrissi », alias connu  1,00
+    2      civility    « Mme Idrissi »                 0,97
+    3      initials    « S. Idrissi » (si unique)      0,90
+    4      context     « Sentinel » + indices          0,85
+    5      fuzzy       faute de frappe, variante       score / 100
+
+L'étape 4 traite les alias AMBIGUS. « Sentinel » peut désigner le projet ou l'application
+Sentinel KYC. Le référentiel associe à chaque sens des indices de contexte (« projet », « comité
+de pilotage », « jalon » pour l'un ; « plateforme », « outil », « écran » pour l'autre). La fonction
+disambiguate() compte les indices présents dans les 90 caractères autour de la mention et ne
+tranche que si un sens l'emporte strictement ; sinon la mention reste ambiguë (et le workflow de
+questions-réponses le signalera à l'utilisateur).
+
+L'étape 5 utilise rapidfuzz (score token_sort_ratio, insensible à l'ordre des mots), restreint
+au type attendu (on ne compare pas une personne à une application : c'est le « blocage » par type).
+Elle applique les trois zones de décision de Fellegi et Sunter (1969) :
+
+    score ≥ 90        lien accepté automatiquement
+    80 ≤ score < 90   lien POSSIBLE : non appliqué, entité « candidate » avec possible_match
+    score < 80        aucune correspondance
+
+    if score >= HIGH_THRESHOLD:
+        return Resolution(entity_id, "fuzzy", round(score / 100, 3))
+    if score >= LOW_THRESHOLD:
+        return Resolution(None, "none", round(score / 100, 3), possible_match=entity_id)
+
+La zone intermédiaire est la plus intéressante pour une banque : au lieu de fusionner deux
+personnes à tort (erreur grave : on attribuerait l'expertise de l'une à l'autre), le système
+propose et laisse décider un humain. Résultat mesuré : 34 cas de test de résolution, 34 corrects
+(alias présents, variantes absentes du référentiel et cas négatifs).
+
+
+13. EXTRACTION DE RELATIONS PAR RÈGLES (extraction/rules.py)
+===========================================================
+
+Une RELATION relie deux entités : « Nadia Benali HAS_EXPERTISE Lutte anti-blanchiment »,
+« AML Watch DEPENDS_ON CoreNova ». Les types autorisés et leurs domaines sont définis par
+l'ontologie (core/ontology.py, voir KNOWLEDGE_GRAPH_NEO4J.txt).
+
+L'extracteur par règles fonctionne sans LLM. Les 18 règles sont décrites dans
+config/extraction_rules.yaml (et non dans le code), ce qui permet de les lire et de les faire
+évoluer sans programmer. Exemple :
+
+    - name: participation_lead
+      relation: PARTICIPATES_IN
+      roles: [lead]
+      subject_types: [Person]
+      object_types: [Project]
+      implicit: object
+      max_distance: 60
+      confidence: 0.85
+      triggers:
+        - "chef(?:fe)? de projet(?! si)"
+        - "pilote(?:e)? par"
+
+Lecture : dans une phrase, si l'on trouve un déclencheur (« chef de projet », « piloté par »), on
+cherche la mention de type Person et la mention de type Project les plus proches, à moins de 60
+caractères. Si aucun projet n'est cité dans la phrase (« Leila Chraibi est chef de projet »),
+l'objet peut être IMPLICITE : le projet décrit par le document (sa charte). La relation produite
+porte le rôle « lead » et une confiance de 0,85.
+
+Mécanismes complémentaires :
+  - `multi` : énumérations (« A, B et C sont membres de l'équipe projet » produit trois
+    relations) ;
+  - `lookback` : chercher l'argument manquant dans les phrases précédentes ;
+  - pronoms en début de phrase (« Elle est responsable de... ») ;
+  - `suppressed_by` : une relation plus spécifique dans la même phrase l'emporte ;
+  - règles codées pour les tournures fréquentes : titre de fonction (« Directrice Conformité,
+    Mme X »), rattachement entre parenthèses (« X (DSI) »), « Pôle X de la DSI ».
+
+Chaque relation candidate est validée contre l'ontologie (validate_relation) et garde la phrase
+source comme preuve.
+
+Méthodologie : les règles ont été mises au point UNIQUEMENT sur les documents D01 à D20. Les
+documents D21 à D35 servent de test. C'est ce qui rend la mesure honnête (section 17).
+
+
+14. EXTRACTION DE RELATIONS PAR LLM (extraction/llm_extractor.py)
+================================================================
+
+Lorsqu'un fournisseur de LLM est configuré ET que LLM_EXTRACTION_ENABLED=true, un second
+extracteur est utilisé. Le LLM reçoit l'ontologie, les entités reconnues dans le passage et le
+passage lui-même, entre balises <passage>. Il doit répondre en JSON.
+
+La sortie d'un LLM n'est jamais tenue pour vraie. Chaque relation proposée passe CINQ filtres :
+
+  1. JSON valide et conforme au schéma Pydantic LLMExtractionOutput (sinon : réponse ignorée) ;
+  2. type de relation connu, sujet et objet de types autorisés (ontologie) ;
+  3. sujet et objet résolus vers des entités du référentiel (même cascade qu'à la section 12) ;
+  4. citation (`evidence`) réellement présente dans le passage :
+
+        def evidence_in_passage(evidence: str, passage: str) -> bool:
+            ev, pa = normalize_key(evidence), normalize_key(passage)
+            if ev in pa:
+                return True
+            return fuzz.partial_ratio(ev, pa) >= 92
+
+     La comparaison se fait sur des textes normalisés (sans accents ni ponctuation), avec une
+     petite tolérance (92 %) pour les espaces et la ponctuation. Une relation dont la preuve
+     n'existe pas dans le texte est « inventée » : elle est rejetée ;
+  5. confiance plafonnée à 0,8 (MAX_LLM_CONFIDENCE) : une relation vue par le LLM seul ne peut
+     pas être plus fiable qu'une relation confirmée par deux extracteurs.
+
+Les rejets sont comptés par motif (stats : invalid_json, schema_violation, rejected_ontology,
+rejected_unresolved, rejected_evidence), ce qui permettrait d'évaluer la qualité d'un LLM.
+
+IMPORTANT : aucune clé d'API n'ayant été fournie pendant le projet, cet extracteur a été testé
+uniquement avec des réponses SIMULÉES (classe ScriptedLLM, tests/test_extraction.py et
+tests/test_security_and_llm.py). Son apport réel n'a pas été mesuré.
+
+
+15. FUSION DES EXTRACTEURS (extraction/merge.py)
+===============================================
+
+    key = (rel.subject_id, rel.relation, rel.object_id, rel.chunk_id)
+    ...
+    if rel.extractor not in extractors[key]:
+        extractors[key].add(rel.extractor)
+        current.confidence = round(min(1.0, max(current.confidence, rel.confidence) + AGREEMENT_BONUS), 3)
+
+  - Deux relations identiques (même sujet, relation, objet, passage) proposées par deux
+    extracteurs DIFFÉRENTS sont fusionnées, et la confiance gagne 0,1 (bonus d'accord), sans
+    dépasser 1. L'idée : deux méthodes indépendantes qui concluent la même chose rendent la
+    conclusion plus crédible.
+  - `round(..., 3)` : sans arrondi, 0,8 + 0,1 donne 0,9000000000000001 en virgule flottante. Ce
+    détail a été corrigé (journal de développement) ; il n'a pas d'effet sur les résultats mais
+    rend les sorties lisibles et comparables.
+  - L'extracteur est alors noté « rules+llm ».
+
+
+16. ORCHESTRATION : processor.py ET pipeline.py
+==============================================
+
+16.1 IngestionPipeline.ingest_file()
+------------------------------------
+
+    content_hash = sha256_file(data)
+    state = self.repo.get_document_state(doc_id)
+    if state and state["hash"] == content_hash:
+        return DocumentIngestionResult(..., outcome="unchanged", ...)
+
+  - Identifiant stable du document : hachage du NOM de fichier (document_id_for). Le même
+    fichier modifié garde le même identifiant ; son contenu est alors remplacé (« updated »).
+  - Si le contenu n'a pas changé, rien n'est refait : c'est l'idempotence.
+
+Puis, dans l'ordre : traitement (process), doublon exact, statut rejeté ou en quarantaine
+(écriture d'une « coquille » : le nœud Document sans contenu), quasi-doublons, et enfin écriture
+complète (_write : vecteurs des passages puis écriture Neo4j). Toute erreur inattendue sur un
+fichier est journalisée et n'interrompt pas le traitement des autres.
+
+16.2 IngestionPipeline.sync_directory()
+---------------------------------------
+
+Traite tous les fichiers d'un répertoire, dans l'ordre alphabétique (reproductibilité), puis
+SUPPRIME du graphe les documents qui ne sont plus dans le répertoire (synchronisation), et lance
+la fin de passe (finalize) :
+
+  - update_versions()        relie les versions d'une même référence (SUPERSEDES) ;
+  - derive_taxonomy_links()  rattache concepts, procédures et projets à leurs domaines ;
+  - derive_covers()          concepts traités par une procédure ou un projet ;
+  - compute_similar_to()     similarité entre documents (recommandations) ;
+  - cleanup_orphans()        supprime les entités qui ne sont plus mentionnées nulle part.
+
+Un nœud IngestionRun garde le rapport de chaque exécution (fichiers vus, résultats, durée),
+consultable par l'administrateur (GET /api/ingestion/runs).
+
+
+17. RÉSULTATS MESURÉS
+====================
+
+Source : RAG/CODE/evaluation/results/RESULTATS.md (configuration gelée).
+
+  Ingestion
+    35 fichiers ; statuts finaux : 31 actifs, 1 remplacé, 2 doublons, 1 en quarantaine
+    169 passages ; ingestion complète 18,45 s ; ré-exécution sans changement 0,38 s
+    Durée moyenne : PDF 0,91 s (OCR compris), TXT 0,15 s, DOCX 0,19 s
+
+  Extraction de relations par règles
+                         Développement (D01-D20)    Test (D21-D35)
+    Précision            1,000                      0,986
+    Rappel               0,968                      0,717
+    F1                   0,984                      0,830
+
+  Mentions d'entités : F1 0,938 (développement) et 0,846 (test)
+  Résolution d'entités : 34 cas sur 34 corrects
+
+Interprétation : la PRÉCISION reste excellente sur le test (les règles se trompent rarement),
+mais le RAPPEL baisse nettement (les règles ne reconnaissent pas les tournures qu'elles n'ont
+jamais vues). Rappels faibles sur le test pour RESPONSIBLE_FOR (0,17 ; 12 cas) et DEPENDS_ON
+(0,44 ; 16 cas). C'est le comportement typique d'une approche par règles, et l'argument principal
+pour tester un extracteur LLM en complément, ce qui reste à faire avec une clé d'API.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | Un F1 de 0,984 sur les documents de mise au point ne prouve rien ; le chiffre      |
+    | honnête est celui des documents jamais vus : F1 0,830, avec un rappel de 0,717.    |
+    +------------------------------------------------------------------------------------+
+
+
+18. LIMITES ET PISTES D'AMÉLIORATION
+===================================
+
+  - Corpus synthétique et régulier : des documents réels comporteraient des tableaux complexes,
+    des fautes et des formulations plus variées, qui pèseraient sur les règles.
+  - Rappel des règles limité sur les documents jamais vus (0,717) : extracteur LLM à évaluer.
+  - Détection d'injection par motifs : contournable par des formulations nouvelles.
+  - OCR « texte seul » : pas de reconstruction des tableaux scannés.
+  - Validation des entités candidates : le mécanisme existe, mais aucun écran ne permet encore à
+    un gestionnaire de les valider (perspective décrite au chapitre 7 du mémoire).

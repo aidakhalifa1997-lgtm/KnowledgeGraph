@@ -1,0 +1,496 @@
+====================================================================================================
+                         ARCHITECTURE DE LA PLATEFORME ORIZIA KNOWLEDGE GRAPH
+====================================================================================================
+
+Public visé : toute personne qui veut comprendre comment les morceaux de la plateforme
+s'emboîtent avant de lire le code. Aucune connaissance préalable du projet n'est supposée.
+
+Ce document décrit l'architecture RÉELLE du dépôt (dossier RAG/CODE). Les noms de fichiers et de
+fonctions cités existent ; vous pouvez les ouvrir en parallèle de la lecture.
+
+SOMMAIRE
+--------
+  1. Le problème à résoudre, en une page
+  2. Vue d'ensemble : six couches
+  3. Le parcours d'un document (écriture)
+  4. Le parcours d'une question (lecture)
+  5. L'assemblage des composants : services.py
+  6. L'API : backend/main.py et backend/api.py
+  7. Le contrôle d'accès, fil rouge de l'architecture
+  8. L'interface web
+  9. Le déploiement en conteneurs
+ 10. Organisation du dépôt
+ 11. Choix d'architecture et alternatives écartées
+ 12. Limites connues de l'architecture
+
+
+1. LE PROBLÈME À RÉSOUDRE, EN UNE PAGE
+=====================================
+
+Une banque possède des centaines de documents : procédures, comptes rendus de comités, chartes de
+projets, notes d'organisation, guides, rapports d'audit. Un collaborateur qui cherche une
+information rencontre quatre difficultés :
+
+  - l'information est DISPERSÉE : la réponse à « quelles applications dépendent de CoreNova ? »
+    se trouve en morceaux dans un compte rendu, une note d'architecture et une cartographie ;
+  - elle est VERSIONNÉE : la procédure KYC existe en version 1.0 (revue tous les 24 mois) et en
+    version 2.0 (revue tous les 12 mois) ;
+  - elle est PROTÉGÉE : le plan de continuité d'activité n'est diffusé qu'à trois directions ;
+  - elle est PORTÉE PAR DES PERSONNES : savoir « qui sait quoi » est aussi important que le
+    contenu des documents.
+
+La plateforme répond à ces quatre difficultés par une architecture en deux temps :
+
+  - un temps d'ÉCRITURE (ingestion) : on lit les documents, on les nettoie, on en extrait des
+    entités et des relations, et on range le tout dans un graphe de connaissances Neo4j ;
+  - un temps de LECTURE (question) : on cherche dans ce graphe et dans le texte des documents,
+    on vérifie que le contexte suffit, on rédige une réponse citée, ou on s'abstient.
+
+    +---------------------------+                       +------------------------------+
+    |  ÉCRITURE (ingestion)     |                       |  LECTURE (questions)         |
+    |  documents -> graphe      |  ---- Neo4j ---->     |  question -> réponse citée   |
+    |  (scripts/ingest.py,      |                       |  (orchestration/workflow.py) |
+    |   ingestion/pipeline.py)  |                       |                              |
+    +---------------------------+                       +------------------------------+
+
+
+2. VUE D'ENSEMBLE : SIX COUCHES
+==============================
+
+    +--------------------------------------------------------------------------------------+
+    | PRÉSENTATION   React 19 + TypeScript + Cytoscape (frontend/)  servi par nginx         |
+    |                pages : Accueil, Assistant, Explorateur, Experts, Recommandations,    |
+    |                Documents ; appels HTTP vers /api                                     |
+    +--------------------------------------------------------------------------------------+
+    | API            FastAPI (backend/) : authentification JWT, rôles, limitation de       |
+    |                débit, en-têtes de sécurité, journalisation JSON, métriques           |
+    +--------------------------------------------------------------------------------------+
+    | SERVICES       orchestration/ (workflow LangGraph de questions-réponses)             |
+    | MÉTIER         expert_discovery/ (recherche d'experts)                               |
+    |                recommendations/ (recommandations de documents)                       |
+    +--------------------------------------------------------------------------------------+
+    | RECHERCHE      retrieval/ : BM25 (plein texte Lucene), vecteurs (WordLlama),         |
+    |                graphe (ancrage d'entités, sous-graphe, PageRank personnalisé),       |
+    |                fusion RRF, filtrage des droits AVANT la recherche                    |
+    +--------------------------------------------------------------------------------------+
+    | CONNAISSANCES  knowledge_graph/ : client Neo4j, schéma (contraintes, index),         |
+    |                écriture idempotente avec provenance, requêtes d'exploration          |
+    |                extraction/ : règles, LLM optionnel, résolution d'entités             |
+    +--------------------------------------------------------------------------------------+
+    | DOCUMENTS      ingestion/ : sécurité des fichiers, lecture PDF/DOCX/TXT, OCR,        |
+    |                nettoyage, métadonnées, qualité, doublons, découpage                  |
+    +--------------------------------------------------------------------------------------+
+    | TRANSVERSE     core/ : configuration, ontologie, modèles de données, adaptateurs LLM,|
+    |                outils de texte, journalisation avec masquage des secrets             |
+    +--------------------------------------------------------------------------------------+
+
+Pourquoi des couches ? Chaque couche ne connaît que celle du dessous. La couche API ne sait pas
+comment fonctionne BM25 ; la couche recherche ne sait pas qu'il existe une interface web. Cette
+séparation a deux bénéfices concrets dans le projet :
+
+  - les TESTS : on peut tester la fusion RRF (retrieval/fusion.py) sans base de données, et le
+    workflow avec un faux LLM (core/llm.py, classe ScriptedLLM) ;
+  - l'ÉVALUATION : le banc d'évaluation (evaluation/run_evaluation.py) appelle directement les
+    services, sans passer par l'API, et compare plusieurs stratégies de recherche avec
+    exactement le même workflow.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | La plateforme n'est pas « un LLM avec des documents ». C'est une chaîne de          |
+    | traitement dont le LLM n'est qu'un maillon OPTIONNEL : sans clé d'API, tout         |
+    | fonctionne en mode hors-ligne (extraction par règles, générateur extractif).        |
+    +------------------------------------------------------------------------------------+
+
+
+3. LE PARCOURS D'UN DOCUMENT (ÉCRITURE)
+======================================
+
+Point d'entrée : `python -m scripts.ingest` (ou le bouton d'ingestion de la page Documents, rôle
+admin). Le script appelle IngestionPipeline.run() (ingestion/pipeline.py), qui traite chaque
+fichier avec DocumentProcessor.process() (ingestion/processor.py).
+
+    fichier
+       |
+       v
+    [1] validation de sécurité        ingestion/security.py   extension, signature, taille,
+       |                                                      pages, bombe zip, octets nuls
+       v
+    [2] empreinte SHA-256             ingestion/pipeline.py   déjà ingéré et inchangé ? -> ignoré
+       |
+       v
+    [3] lecture                       ingestion/loaders.py    PyMuPDF, python-docx, texte
+       |  (PDF sans texte ?)  -->     ingestion/ocr.py        Tesseract fra+eng
+       v
+    [4] nettoyage + métadonnées       ingestion/cleaning.py   en-têtes répétés, lignes coupées
+       |                              ingestion/metadata.py   cartouche : référence, version,
+       |                                                      date, direction, diffusion...
+       v
+    [5] qualité + injection           ingestion/quality.py    score, anomalies
+       |                              ingestion/security.py   détection d'instructions -> quarantaine
+       v
+    [6] découpage en passages         ingestion/chunking.py   sections, taille cible
+       v
+    [7] extraction                    extraction/rules.py     18 règles + LLM optionnel
+       |                              extraction/linker.py    entités du référentiel, candidates
+       v
+    [8] doublons et versions          ingestion/dedup.py      SHA-256 exact, MinHash approché
+       v
+    [9] écriture dans Neo4j           knowledge_graph/repository.py  MERGE idempotent + provenance
+       v
+   [10] vecteurs des passages         retrieval/embeddings.py WordLlama 256 dimensions
+       v
+   [11] fin de passe                  versions (SUPERSEDES), relations dérivées, similarités,
+                                      nettoyage des entités orphelines, journal IngestionRun
+
+Le détail de chaque étape est dans INGESTION_OCR_EXTRACTION.txt et KNOWLEDGE_GRAPH_NEO4J.txt.
+
+Trois propriétés de ce parcours sont importantes pour une banque :
+
+  - IDEMPOTENCE : relancer l'ingestion sans changement ne modifie rien (mesuré : environ 0,4 s
+    pour tout le corpus, contre environ 18 s pour une ingestion complète). C'est l'empreinte
+    SHA-256 qui permet de reconnaître un fichier déjà traité.
+  - TRAÇABILITÉ : chaque relation du graphe garde la liste des documents, passages et extraits
+    qui la justifient. Supprimer un document supprime les relations qu'il était seul à justifier.
+  - PRUDENCE : un document suspect n'est pas « nettoyé » silencieusement, il est mis en
+    quarantaine (statut `quarantined`) et n'est jamais proposé à la recherche.
+
+
+4. LE PARCOURS D'UNE QUESTION (LECTURE)
+======================================
+
+Point d'entrée : POST /api/ask (backend/api.py, fonction ask). Le corps de la requête contient la
+question ; le jeton JWT dans l'en-tête Authorization identifie l'utilisateur.
+
+    navigateur --POST /api/ask--> FastAPI
+                                    |
+                                    |  current_user()       : jeton valide ? sinon 401
+                                    |  access_context()     : groupes de diffusion de l'utilisateur
+                                    |  ask_limiter.allow()  : moins de 30 questions/minute ? sinon 429
+                                    v
+                         QAWorkflow.run(question, access)        orchestration/workflow.py
+                                    |
+            +-----------------------+-------------------------------------------+
+            |  analyze   : type de question (factuelle, relationnelle, multi-sauts,|
+            |              expertise, ambiguë) et entités citées                   |
+            |  retrieve  : documents autorisés -> BM25 + vecteurs + graphe -> RRF |
+            |  assess    : le contexte suffit-il ? contradictions ? versions ?    |
+            |  expand    : (une fois au plus) élargir la recherche                |
+            |  generate  : réponse citée [C1] [F1] (extractive ou LLM)            |
+            |  verify    : citations valides ? phrases appuyées ? contenu sûr ?   |
+            |  abstain   : « je ne dispose pas d'informations suffisantes »       |
+            +-----------------------+-------------------------------------------+
+                                    |
+                                    v
+                    JSON : answer, status, citations, facts, graph, conflicts,
+                           limits, verification, trace (durée de chaque étape)
+
+Le détail est dans WORKFLOW_RAG_GRAPHRAG.txt (recherche) et LANGGRAPH_ET_ORCHESTRATION.txt
+(workflow). Le champ `trace` de la réponse permet de voir, pour chaque question, quel chemin le
+workflow a suivi et combien de temps chaque étape a pris.
+
+
+5. L'ASSEMBLAGE DES COMPOSANTS : services.py
+===========================================
+
+Tous les objets partagés (client Neo4j, encodeur, pipeline, moteur de recherche, workflow) sont
+construits à UN SEUL endroit : la classe Services du fichier services.py. L'API, les scripts et
+l'évaluation l'utilisent tous. Voici un extrait commenté.
+
+    @dataclass
+    class Services:
+        settings: Settings
+
+        @cached_property
+        def client(self) -> Neo4jClient:
+            return Neo4jClient.from_settings(self.settings)
+
+  - `@dataclass` : Python génère le constructeur ; Services(settings) suffit à créer l'objet.
+  - `@cached_property` : la méthode n'est exécutée qu'au PREMIER accès à `services.client` ;
+    le résultat est ensuite mémorisé. On obtient ainsi une construction paresseuse (rien n'est
+    créé tant qu'on n'en a pas besoin) et unique (un seul client Neo4j par processus).
+
+    @cached_property
+    def retriever(self) -> Retriever:
+        return Retriever(self.client, TextSearch(self.client, self.embedder), self.graph_retriever,
+                         rrf_k=self.settings.rrf_k, candidate_pool=self.settings.candidate_pool,
+                         source_guarantee=self.settings.retrieval_source_guarantee)
+
+  - Le moteur de recherche reçoit ses dépendances (client, recherche textuelle, recherche dans le
+    graphe) au lieu de les créer lui-même. C'est de « l'injection de dépendances » sans
+    bibliothèque : dans les tests, on peut lui passer de faux composants.
+  - Les paramètres (k de RRF = 60, 40 candidats, garantie par source = 1) viennent de la
+    configuration (core/settings.py), donc du fichier .env : aucun réglage n'est codé en dur
+    dans la logique.
+
+    def refresh_after_ingestion(self) -> None:
+        for name in ("term_stats", "workflow"):
+            self.__dict__.pop(name, None)
+        self.access.invalidate()
+
+  - Après une ingestion, les statistiques lexicales (utilisées par le contrôle de suffisance) et
+    le cache des droits doivent être recalculés. Retirer l'attribut de `__dict__` force
+    `cached_property` à reconstruire l'objet au prochain accès.
+
+    +------------------------------------------------------------------------------------+
+    | QUESTION DE JURY POSSIBLE                                                          |
+    | « Pourquoi ne pas utiliser un framework d'injection de dépendances ? »             |
+    | Réponse : le graphe des dépendances est petit (une quinzaine d'objets) et stable.  |
+    | Une classe avec cached_property suffit, se lit en une page et ne rajoute aucune    |
+    | bibliothèque. Un framework serait justifié si les combinaisons de composants       |
+    | variaient selon les environnements, ce qui n'est pas le cas ici.                   |
+    +------------------------------------------------------------------------------------+
+
+
+6. L'API : backend/main.py ET backend/api.py
+==========================================
+
+6.1 La fabrique d'application
+-----------------------------
+
+`create_app()` (backend/main.py) construit l'application FastAPI. On la lance avec :
+
+    uvicorn backend.main:create_app --factory --port 8000
+
+L'option `--factory` indique à uvicorn d'appeler la fonction pour obtenir l'application. Cela
+permet aux tests de créer une application avec de faux services : create_app(services=...).
+
+Points saillants de create_app :
+
+    secret = settings.app_secret_key.get_secret_value()
+    if not secret:
+        raise RuntimeError("APP_SECRET_KEY n'est pas défini : la signature des jetons est impossible.")
+
+  - Le secret de signature des jetons est un `SecretStr` (pydantic) : il ne s'affiche pas en
+    clair dans les journaux ni dans les messages d'erreur. Sans secret, l'API REFUSE de démarrer
+    plutôt que de fonctionner avec une sécurité dégradée (principe « fail closed »).
+
+    @app.middleware("http")
+    async def observability(request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+        ...
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Cache-Control"] = "no-store"
+
+  - Un intercepteur (middleware) entoure chaque requête : il attribue un identifiant, mesure la
+    durée, enregistre la métrique de la route, ajoute des en-têtes de sécurité et écrit une ligne
+    de journal JSON (utilisateur, route, statut, durée ; PAS le texte de la question).
+  - `Cache-Control: no-store` empêche le navigateur ou un proxy de conserver une réponse qui
+    pourrait contenir une information à diffusion restreinte.
+
+    @app.exception_handler(GraphUnavailable)
+    async def graph_unavailable(_: Request, exc: GraphUnavailable):
+        return JSONResponse({"detail": "Base de connaissances indisponible, ..."}, status_code=503)
+
+  - Si Neo4j tombe, l'API répond 503 avec un message clair au lieu d'une erreur 500 opaque.
+    L'interface affiche alors un état d'erreur compréhensible.
+
+6.2 Les routes
+--------------
+
+    Route                                   Rôle minimal   Usage
+    --------------------------------------  -------------  -----------------------------------
+    POST /api/auth/login                    -              obtenir un jeton
+    GET  /api/auth/me                       viewer         profil, rôles, groupes
+    POST /api/ask                           viewer         poser une question
+    GET  /api/workflow/diagram              viewer         schéma Mermaid du workflow
+    GET  /api/graph/schema|stats|search     viewer         exploration du graphe
+    GET  /api/graph/overview                viewer         vue d'ensemble
+    GET  /api/graph/node/{id}               viewer         fiche d'un nœud
+    GET  /api/graph/neighborhood/{id}       viewer         voisinage (1 ou 2 sauts)
+    GET  /api/experts, /experts/domains     manager        recherche d'experts
+    GET  /api/recommendations/document/{id} viewer         documents liés
+    POST /api/recommendations/query         viewer         documents pour un besoin
+    GET  /api/documents, /documents/{id}    viewer         catalogue filtré par les droits
+    POST /api/documents                     admin          déposer un document
+    DELETE /api/documents/{id}              admin          retirer un document
+    POST /api/ingestion/run                 admin          relancer l'ingestion
+    GET  /api/ingestion/runs                admin          historique des ingestions
+    GET  /api/metrics                       admin          latences p50/p95 par route
+    GET  /api/health                        -              état du service et de Neo4j
+
+La documentation interactive (OpenAPI) est servie sur /api/docs.
+
+
+7. LE CONTRÔLE D'ACCÈS, FIL ROUGE DE L'ARCHITECTURE
+==================================================
+
+C'est le point le plus important pour un contexte bancaire. La règle est simple :
+
+    Un utilisateur voit un document si la diffusion du document contient « ALL »
+    ou si l'un de ses groupes figure dans la liste de diffusion du document.
+
+La difficulté n'est pas la règle, c'est l'endroit où on l'applique. Deux options existent :
+
+  (a) chercher dans TOUS les documents, puis retirer les passages non autorisés de la réponse
+      (« post-filtrage ») ;
+  (b) calculer d'abord la liste des documents autorisés, puis chercher UNIQUEMENT dans ceux-là
+      (« pré-filtrage »).
+
+Le projet applique (b). Le module retrieval/access.py calcule la liste :
+
+    rows = self.client.read(
+        """MATCH (d:Document) WHERE d.status IN $statuses
+           AND ('ALL' IN d.diffusion OR '*' IN $groups OR any(g IN d.diffusion WHERE g IN $groups))
+           RETURN d.id AS id""", statuses=SEARCHABLE, groups=sorted(access.groups))
+
+  - `d.status IN $statuses` : seuls les documents actifs ou remplacés sont interrogeables ; les
+    doublons, les documents rejetés et ceux en quarantaine sont exclus pour tout le monde.
+  - `'ALL' IN d.diffusion` : document diffusé à tous.
+  - `any(g IN d.diffusion WHERE g IN $groups)` : au moins un groupe en commun.
+  - `'*' IN $groups` : contexte technique réservé aux scripts et à l'évaluation
+    (AccessContext.system()), jamais attribué à un utilisateur.
+  - `$statuses`, `$groups` : paramètres Cypher. La requête n'est jamais construite par
+    concaténation de chaînes, ce qui exclut l'injection Cypher.
+
+Cette liste est ensuite passée à TOUTES les recherches (BM25, vecteurs, graphe). Une relation du
+graphe n'est visible que si au moins un de ses documents sources est autorisé.
+
+Pourquoi (b) plutôt que (a) ? Avec le post-filtrage, un passage non autorisé peut influencer le
+classement, être résumé par le LLM, ou apparaître dans un message d'erreur. Avec le
+pré-filtrage, il n'entre jamais dans la chaîne de traitement. Le test d'intégration
+`test_retrieval_never_returns_unauthorized_content` (tests/test_integration.py, exécuté pour
+chaque stratégie de recherche) et l'évaluation (0 fuite sur toutes les stratégies) vérifient
+cette propriété.
+
+    +------------------------------------------------------------------------------------+
+    | À RETENIR                                                                          |
+    | « Filtrer AVANT de chercher. » Le contrôle d'accès n'est pas une couche ajoutée à  |
+    | la fin : c'est un paramètre de chaque requête de recherche.                        |
+    +------------------------------------------------------------------------------------+
+
+Les rôles (viewer < manager < admin) sont une seconde dimension, indépendante des groupes :
+
+  - les GROUPES disent QUELS DOCUMENTS on peut voir (diffusion) ;
+  - les RÔLES disent QUELLES FONCTIONS on peut utiliser (experts : manager ; administration :
+    admin).
+
+La fonction `require_role` (backend/deps.py) protège les routes ; `User.has_role` compare les
+niveaux (un admin a aussi les droits d'un manager).
+
+
+8. L'INTERFACE WEB
+=================
+
+L'interface (frontend/) est une application React 19 + TypeScript construite avec Vite. Elle
+n'accède JAMAIS à Neo4j directement : elle appelle l'API.
+
+    frontend/src/
+      main.tsx            point d'entrée React
+      App.tsx             navigation (routage par « hash » : #/ask, #/explorer...), session
+      api.ts              appels HTTP typés, jeton dans l'en-tête Authorization
+      types.ts            types TypeScript des réponses de l'API
+      components/
+        GraphView.tsx     affichage du graphe avec Cytoscape.js
+        graphStyle.ts     couleurs et formes par type d'entité
+        AnswerText.tsx    rendu des marqueurs [C1] [F1] cliquables
+        States.tsx        états chargement / vide / erreur
+      pages/              Accueil, Assistant, Explorateur, Experts, Recommandations, Documents
+
+Deux choix de sécurité côté navigateur :
+
+  - le jeton est conservé en `sessionStorage` (effacé à la fermeture de l'onglet) ;
+  - nginx applique une politique de sécurité du contenu stricte (frontend/nginx.conf, en-tête
+    Content-Security-Policy : uniquement des scripts et styles servis par le site lui-même).
+    Cytoscape injecte normalement une balise <style> ; le projet la désactive et fournit la
+    règle CSS équivalente, pour ne pas affaiblir la politique.
+
+
+9. LE DÉPLOIEMENT EN CONTENEURS
+==============================
+
+    +---------------------- réseau Docker interne ------------------------+
+    |                                                                     |
+    |   [frontend]  nginx non privilégié, sert l'interface et relaie /api |
+    |       |                                                             |
+    |       v                                                             |
+    |   [backend]   FastAPI + uvicorn, Python 3.12, Tesseract             |
+    |       |       système de fichiers en lecture seule, capacités       |
+    |       |       retirées                                              |
+    |       v                                                             |
+    |   [neo4j]     Neo4j 5.26 Community, volume persistant, AUCUN port   |
+    |               publié sur la machine hôte                            |
+    +---------------------------------------------------------------------+
+           ^
+           |  127.0.0.1:8080 (machine locale seulement)
+       navigateur
+
+En production (fichier docker-compose.prod.yml), un reverse proxy Caddy ajoute le HTTPS devant le
+frontend. Le détail est dans DEPLOIEMENT_ET_MAINTENANCE.txt.
+
+
+10. ORGANISATION DU DÉPÔT
+========================
+
+    RAG/
+      CODE/                      tout le code
+        backend/                 API FastAPI
+        core/                    configuration, ontologie, modèles, LLM, texte, journaux
+        ingestion/               lecture, OCR, nettoyage, métadonnées, qualité, doublons
+        extraction/              règles, LLM, résolution d'entités
+        knowledge_graph/         client, schéma, écriture, requêtes d'exploration
+        retrieval/               accès, BM25/vecteurs, graphe, fusion
+        orchestration/           workflow LangGraph et ses nœuds
+        expert_discovery/        recherche d'experts
+        recommendations/         recommandations
+        evaluation/              banc d'évaluation, résultats, journal post-gel
+        frontend/                interface React
+        config/                  règles d'extraction, poids des experts, comptes de démo
+        scripts/                 ingestion, création d'utilisateur, campagne, exploitation
+        tests/                   tests unitaires, d'intégration et d'API
+        services.py              assemblage des composants
+      data/                      corpus synthétique et vérités terrain
+      DETAILS/                   cette documentation pédagogique
+      RAPPORT ET PRESENTATION/   mémoire, présentation, figures
+      RESEARCH PAPERS/           bibliographie vérifiée, matrice de littérature
+      docker-compose*.yml        déploiement ; Makefile : raccourcis
+
+
+11. CHOIX D'ARCHITECTURE ET ALTERNATIVES ÉCARTÉES
+================================================
+
+  Choix                              Alternative écartée            Raison
+  ---------------------------------  -----------------------------  ------------------------------
+  Neo4j seul (graphe + vecteurs +    Neo4j + base vectorielle       une seule base à sauvegarder,
+  plein texte)                       séparée (Qdrant, pgvector...)  à sécuriser et à filtrer par
+                                                                    les droits
+  Workflow explicite (LangGraph)     agent LLM autonome (ReAct)     chemin prévisible, auditable,
+                                                                    testable sans LLM
+  Pré-filtrage des droits            post-filtrage                  aucun passage interdit dans
+                                                                    la chaîne
+  Monolithe modulaire (une API)      microservices                  un seul développeur, faible
+                                                                    charge ; les modules restent
+                                                                    séparables
+  Mode hors-ligne par défaut         LLM obligatoire                fonctionne et se teste sans
+                                                                    clé ; données confinées
+  Interface React séparée            pages générées par le serveur  interactivité du graphe
+                                                                    (Cytoscape), API réutilisable
+
+Le fichier TECHNOLOGIES_ET_JUSTIFICATIONS.txt détaille chaque technologie.
+
+    +------------------------------------------------------------------------------------+
+    | QUESTION DE JURY POSSIBLE                                                          |
+    | « Pourquoi un monolithe et pas des microservices ? »                               |
+    | Réponse : les microservices répondent à des problèmes d'équipes nombreuses et de   |
+    | montée en charge indépendante, que ce projet n'a pas. Ils ajouteraient du réseau,  |
+    | de la sérialisation et de l'exploitation. Le code est néanmoins découpé en modules  |
+    | aux interfaces nettes (services.py) : extraire la recherche ou l'ingestion dans un |
+    | service séparé serait possible sans réécriture.                                    |
+    +------------------------------------------------------------------------------------+
+
+
+12. LIMITES CONNUES DE L'ARCHITECTURE
+====================================
+
+  - Limiteur de débit en mémoire (backend/security.py, RateLimiter) : il suppose une seule
+    instance de l'API. Avec plusieurs instances, il faudrait un stockage partagé (par exemple
+    Redis).
+  - Métriques en mémoire (backend/main.py, Metrics) : remises à zéro au redémarrage ; un vrai
+    service de supervision (Prometheus, outil de la banque) serait nécessaire en production.
+  - Comptes de démonstration dans un fichier YAML : à remplacer par l'annuaire de l'entreprise
+    (authentification unique, SSO).
+  - Neo4j Community : pas de sauvegarde à chaud ni de contrôle d'accès fin dans la base ; le
+    contrôle d'accès est applicatif (section 7) et la sauvegarde se fait base arrêtée.
+  - Aucun déploiement distant n'a été réalisé : l'architecture a été exécutée et testée en local
+    (Docker Compose), pas sur un serveur public.
