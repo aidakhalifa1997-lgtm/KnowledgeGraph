@@ -195,7 +195,7 @@ avec k = 60 (valeur de l'article) et w_i un poids par source (1 par défaut).
     Passage   rang BM25   rang vecteurs   score RRF (k = 60)
     -------   ---------   -------------   --------------------------------------
     P1        1           5               1/61 + 1/65 = 0,01639 + 0,01538 = 0,03178
-    P2        3           1               1/63 + 1/61 = 0,01587 + 0,01639 = 0,03226
+    P2        3           1               1/63 + 1/61 = 0,01587 + 0,01639 = 0,03227
     P3        2           absent          1/62                            = 0,01613
 
 Classement fusionné : P2, P1, P3. Un passage bien placé dans les DEUX listes l'emporte sur un

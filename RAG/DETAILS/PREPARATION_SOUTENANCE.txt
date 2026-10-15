@@ -1,0 +1,277 @@
+====================================================================================================
+                                     PRÉPARATION DE LA SOUTENANCE
+====================================================================================================
+
+Objectif : préparer une présentation claire et défendable, une démonstration sans surprise et
+des réponses solides aux questions du jury. Ce fichier suit la structure de la présentation
+(RAG/RAPPORT ET PRESENTATION/Presentation_PFE_Knowledge_Graph_LLM.pptx), dont chaque diapositive
+porte des notes de l'orateur.
+
+SOMMAIRE
+--------
+  1. Les trois messages à faire passer
+  2. Plan minuté de la présentation
+  3. Script de la démonstration
+  4. Les chiffres à connaître par cœur
+  5. Présenter les limites sans se fragiliser
+  6. Questions probables du jury et éléments de réponse
+  7. Pièges à éviter
+  8. Liste de vérification la veille et le jour J
+
+
+1. LES TROIS MESSAGES À FAIRE PASSER
+===================================
+
+  1. UN PROBLÈME RÉEL, UNE SOLUTION COMPLÈTE : la connaissance bancaire est écrite mais difficile
+     à mobiliser ; la plateforme va du fichier brut à la réponse citée, avec graphe, recherche
+     hybride, workflow, interface et déploiement conteneurisé.
+  2. UNE ÉVALUATION HONNÊTE : cinq architectures comparées avec le même workflow, protocole contre
+     le sur-ajustement (partitions, gel, journal), intervalles de confiance ; le graphe aide là où
+     on l'attend (relationnel, multi-sauts) et la fiabilité est obtenue par construction.
+  3. UNE VISION DE DÉPLOIEMENT RÉALISTE : contrôle d'accès dès la conception, gouvernance (rôles,
+     contrôles, indicateurs) et trajectoire pilote -> production, nourries par l'expérience de
+     l'organisation bancaire.
+
+
+2. PLAN MINUTÉ DE LA PRÉSENTATION (ENVIRON 20 MINUTES)
+=====================================================
+
+    N°   Diapositive                              Durée   Idée clé
+    ---  ---------------------------------------  ------  ------------------------------------------
+    1    Titre                                    0:30    se présenter, double profil orga + data
+    2    Contexte : la connaissance dispersée     1:30    dispersion, versions, diffusion, experts
+    3    Problématique et questions               1:30    QR1-QR5 / H1-H5
+    4    Démarche                                 1:00    corpus synthétique, conception-évaluation
+    5    Architecture                             1:30    six couches ; le LLM est optionnel
+    6    Du document au graphe                    1:30    ingestion prudente ; provenance
+    7    Recherche hybride et GraphRAG            1:30    trois sources, RRF, routage
+    8    Workflow de réponse                      1:30    suffisance, abstention, vérification
+    9    Sécurité et contrôle d'accès             1:00    filtrer avant de chercher ; injection
+    10   Démonstration (captures ou direct)       2:30    relationnel, contradiction, droits
+    11   Protocole d'évaluation                   1:00    partitions, gel, 17 + 49 questions
+    12   Résultats : recherche                    1:00    final 0,839 ; BM25 très fort ; encodeur
+    13   Résultats : réponses et fiabilité        1:30    0,742 / 0,694 ; 0 fuite ; abstention
+    14   Experts et recommandations               0:45    H4 non démontrée ; H5 validée
+    15   Discussion des hypothèses                1:00    tableau H1-H5
+    16   Gouvernance et déploiement en banque     1:00    RACI, contrôles, trajectoire
+    17   Limites et perspectives                  1:00    LLM, encodeur, documents réels
+    18   Conclusion                               0:30    les trois messages
+
+Conseil : répéter à voix haute avec un chronomètre ; couper dans les diapositives 6 à 8 si le
+temps manque, jamais dans les résultats ni dans les limites.
+
+
+3. SCRIPT DE LA DÉMONSTRATION
+============================
+
+Préparation (la veille) : plateforme démarrée (make up), corpus ingéré (make ingest), navigateur
+ouvert sur http://localhost:8080, deux onglets privés (pour deux comptes), captures d'écran de
+secours dans RAG/RAPPORT ET PRESENTATION/figures/captures/ en cas de problème technique.
+
+    Étape  Action                                          Ce qu'il faut dire
+    -----  ----------------------------------------------  -----------------------------------------
+    1      Connexion « analyste.conformite »               « Chaque compte a des groupes de
+                                                           diffusion, comme dans une banque. »
+    2      « Quelles applications dépendent de CoreNova ? » « Les faits [F] viennent du graphe, les
+                                                           passages [C] des documents ; chaque
+                                                           marqueur est cliquable. »
+    3      Cliquer sur [F2]                                « Ce fait est confirmé par trois
+                                                           documents, avec les phrases exactes. »
+    4      « Quelle est la fréquence de revue périodique   « 12 mois selon la procédure en
+           des clients à risque élevé ? »                  vigueur ; la plateforme signale que
+                                                           l'outil et l'ancienne version disent
+                                                           24 mois : c'est un constat d'audit. »
+    5      Compte « collaborateur » : « Quel est le RTO    « Abstention : le plan de continuité ne
+           de CoreNova ? »                                 lui est pas diffusé, et la réponse ne
+                                                           révèle même pas son existence. »
+    6      Même question avec « ingenieur.dsi »            « 4 heures, avec la source. »
+    7      Explorateur : voisinage de CoreNova             « Le graphe est explorable et filtré
+                                                           par les mêmes droits. »
+
+Durée visée : deux minutes trente. Si une étape échoue, passer à la capture correspondante sans
+s'attarder.
+
+
+4. LES CHIFFRES À CONNAÎTRE PAR CŒUR
+===================================
+
+(configuration gelée, encodeur WordLlama, générateur extractif hors-ligne)
+
+  Corpus           35 documents, 169 passages, 66 questions (17 de développement, 49 jamais
+                   inspectées), 10 catégories
+  Ingestion        18,45 s ; ré-exécution 0,38 s (idempotence)
+  Recherche        nDCG@5 : final 0,839 ; BM25 0,831 ; hybride 0,803 ; vectoriel 0,720 ;
+                   graphe seul 0,708
+  Encodeur         vectoriel 0,720 (WordLlama) contre 0,409 (spaCy)
+  Réponses         exactitude finale 0,742 [0,64 ; 0,85] ; 0,882 (dév.) / 0,694 (jamais vues)
+                   RAG vectoriel 0,651 ; hybride 0,606 ; GraphRAG 0,515 ; hybride+graphe 0,773
+  Graphe           relationnel 0,12 -> 0,62 ; multi-sauts 0,30 -> 0,60 (vectoriel -> final)
+  Fiabilité        0 citation inventée ; 0 fuite ; 0 chaîne interdite
+  Abstention       rappel 0,909 ; abusive 18 %
+  Experts          nDCG@3 0,975 contre 0,911, p = 0,375
+  Recommandations  nDCG@5 0,908 contre 0,648, p = 0,004
+  Extraction       F1 0,984 (dév.) / 0,830 (test), rappel test 0,717 ; résolution 34/34
+  Tests            103 cas (67 unitaires, 36 intégration)
+  Reproductibilité 0 différence sur 1 056 lignes
+
+
+5. PRÉSENTER LES LIMITES SANS SE FRAGILISER
+==========================================
+
+Principe : une limite annoncée par l'étudiante est une preuve de maîtrise ; une limite découverte
+par le jury est une faiblesse. Formuler chaque limite en trois temps : le CONSTAT, la CAUSE, la
+SUITE.
+
+    Limite                          Formulation suggérée
+    ------------------------------  --------------------------------------------------------------
+    Aucun LLM évalué                « Aucune clé n'était disponible ; j'ai donc conçu la plateforme
+                                    pour fonctionner sans, et testé les adaptateurs avec des
+                                    réponses simulées. Mesurer l'apport d'un LLM, sur les mêmes
+                                    questions, est la première perspective. »
+    Corpus synthétique              « Les documents réels ne pouvaient pas sortir de la banque. J'ai
+                                    intégré dans le corpus les difficultés que je rencontre dans
+                                    mon métier. Les résultats valent pour ce banc d'essai. »
+    Sur-ajustement                  « Le protocole le mesure : 0,882 contre 0,694. Je retiens le
+                                    second chiffre. »
+    Abstentions abusives (18 %)     « Le contrôle de suffisance est lexical et sensible aux
+                                    paraphrases ; un contrôle sémantique ou par LLM est la piste. »
+    Encodeur faible                 « Aucun modèle téléchargeable ; j'ai comparé les deux options
+                                    disponibles et retenu la meilleure par la mesure. »
+    Pas de déploiement distant      « La plateforme est conteneurisée et testée localement, y
+                                    compris la restauration ; le déploiement est préparé mais
+                                    n'a pas été réalisé. »
+
+
+6. QUESTIONS PROBABLES DU JURY ET ÉLÉMENTS DE RÉPONSE
+====================================================
+
+6.1 Sur le sujet et la démarche
+-------------------------------
+
+  Q : Pourquoi un graphe de connaissances, et pas seulement un RAG ?
+  R : Parce qu'une partie des questions bancaires RELIENT des entités (dépendances, responsables,
+      équipes). Mesure : sur les questions relationnelles, l'exactitude passe de 0,12 (RAG
+      vectoriel) à 0,62 ; sur les multi-sauts, de 0,30 à 0,60. Sur le factuel, le graphe seul est
+      mauvais : d'où le routage.
+
+  Q : Pourquoi un corpus synthétique ? N'est-ce pas trop facile ?
+  R : Confidentialité. Le corpus contient volontairement des pièges (versions, contradictions,
+      doublons, scan, diffusion restreinte, injection). Il est plus régulier que la réalité : c'est
+      une menace à la validité externe que je cite explicitement.
+
+  Q : Quelle est votre contribution par rapport à l'existant ?
+  R : Une architecture qui place droits d'accès et provenance au cœur du modèle de données ; un
+      banc d'essai français reproductible avec un protocole contre le sur-ajustement ; une
+      comparaison de cinq architectures à workflow identique ; une réflexion de gouvernance
+      bancaire.
+
+6.2 Sur les choix techniques
+----------------------------
+
+  Q : Pourquoi Neo4j ?
+  R : Propriétés sur les relations (provenance), Cypher pour les parcours multi-sauts, index
+      vectoriel et plein texte dans la même base (une seule base à filtrer par les droits).
+      Vérifié expérimentalement en édition Community.
+
+  Q : Pourquoi LangGraph et pas un agent ?
+  R : Besoin de prévisibilité, d'audit et de coût borné ; fonctionnement sans LLM. LangGraph est
+      utilisé comme un automate à états explicite ; le LLM ne choisit jamais la suite.
+
+  Q : Pourquoi RRF ?
+  R : Les scores BM25, cosinus et PageRank ne sont pas comparables ; RRF n'utilise que les rangs.
+      J'ai documenté sa limite (un premier résultat d'une seule source peut être évincé) et la
+      correction post-gel, sans gain sur les questions jamais vues.
+
+  Q : Pourquoi BM25 est-il meilleur que l'hybride ?
+  R : Encodeur vectoriel léger hors-ligne, et questions bancaires riches en termes exacts. L'ablation
+      montre que l'intérêt de l'hybride dépend de l'encodeur (avec spaCy, l'hybride tombe à 0,680).
+
+  Q : Comment fonctionne le PageRank personnalisé ?
+  R : Marche aléatoire sur le sous-graphe, avec retour aux entités de la question avec probabilité
+      0,15 ; la fréquence de passage mesure l'importance d'une entité vue depuis la question.
+
+6.3 Sur l'évaluation
+--------------------
+
+  Q : Vos métriques mesurent-elles vraiment la qualité ?
+  R : Elles mesurent la présence des éléments attendus et la fiabilité (citations, fuites). Elles
+      conviennent à un générateur extractif ; avec un LLM, il faudrait une évaluation humaine ou
+      des métriques de type RAGAS, en tenant compte des biais des LLM juges.
+
+  Q : Vos écarts sont-ils significatifs ?
+  R : Certains oui (final contre RAG hybride en exactitude : p = 0,02 ; recommandations : p =
+      0,004), d'autres non (experts : p = 0,375 ; final contre BM25 en recherche). Je ne conclus
+      que lorsque l'incertitude le permet.
+
+  Q : Pourquoi l'hybride à graphe fixe a-t-il une meilleure exactitude que le final ?
+  R : Deux questions d'écart, non significatif (p = 0,5) ; le routage réduit parfois le poids du
+      graphe à tort (Q14) ou l'augmente sans bénéfice (Q28). En recherche, le final est devant.
+
+6.4 Sur la sécurité et la conformité
+------------------------------------
+
+  Q : Comment garantissez-vous qu'un utilisateur ne voit pas un document restreint ?
+  R : Liste des documents autorisés calculée avant la recherche et passée en paramètre à toutes
+      les requêtes (BM25, vecteurs, graphe) ; garde-fou après fusion ; tests par stratégie ; 0
+      fuite mesurée.
+
+  Q : Et l'injection de prompt ?
+  R : Défense en couches : quarantaine à l'ingestion, documents traités comme des données dans le
+      prompt, assainissement et vérification de la réponse. Les motifs ne suffisent pas seuls ; je
+      ne le prétends pas.
+
+  Q : Peut-on envoyer les documents d'une banque à un LLM externe ?
+  R : Pas sans décision formelle : classification des données, contrat (localisation,
+      conservation, non-réutilisation), analyse de risques, avis du DPO. Sinon, un modèle hébergé
+      en interne. La plateforme fonctionne hors-ligne par défaut.
+
+  Q : La recherche d'experts pose-t-elle un problème de données personnelles ?
+  R : Oui : finalité limitée (orientation, pas évaluation), information des collaborateurs, accès
+      réservé aux managers, preuves affichées, avis du DPO avant usage réel.
+
+6.5 Sur le déploiement et l'organisation
+----------------------------------------
+
+  Q : Est-ce prêt pour la production ?
+  R : Non. C'est un prototype évalué. Il manque notamment le SSO, la supervision centralisée, des
+      sauvegardes automatisées, l'homologation et une évaluation sur documents réels.
+
+  Q : Comment la déploieriez-vous dans votre banque ?
+  R : Cadrage et homologation, puis pilote sur un domaine délimité (par exemple la conformité)
+      avec un jeu de questions réelles annotées par les métiers, puis industrialisation, puis
+      extension par domaine. Avec un gestionnaire des connaissances et des contrôles par
+      échantillonnage confiés à la conformité.
+
+  Q : Qui maintient le graphe ?
+  R : Les propriétaires de documents restent responsables du contenu ; un gestionnaire des
+      connaissances valide entités candidates et quarantaine ; l'équipe data fait évoluer
+      l'ontologie et les règles. La matrice RACI est au chapitre 7.
+
+
+7. PIÈGES À ÉVITER
+=================
+
+  - Dire « le LLM a montré que... » : aucun LLM n'a été évalué.
+  - Dire « la plateforme est en production » ou « déployée » : elle ne l'est pas.
+  - Présenter 0,882 comme le résultat : le chiffre honnête est 0,694 (jamais vues).
+  - Dire « le graphe améliore tout » : il dégrade le factuel s'il est utilisé seul.
+  - Lire les diapositives : elles portent des chiffres, la voix porte le raisonnement.
+  - Se justifier longuement sur une limite : constat, cause, suite, puis passer à la suite.
+  - Citer une référence dont on ne connaît pas le contenu : s'en tenir à la bibliographie
+    vérifiée (RAG/RESEARCH PAPERS/BIBLIOGRAPHIE.md).
+
+
+8. LISTE DE VÉRIFICATION LA VEILLE ET LE JOUR J
+==============================================
+
+  La veille
+    [ ] répétition chronométrée complète (moins de 20 minutes)
+    [ ] plateforme démarrée et corpus ingéré ; parcours de démonstration rejoué
+    [ ] captures de secours ouvertes ; présentation en PDF de secours
+    [ ] mémoire imprimé ou ouvert, annexes repérées (corpus, questions, exemples de réponses)
+    [ ] chiffres de la section 4 relus
+
+  Le jour J
+    [ ] ordinateur sur secteur, notifications coupées, résolution d'écran testée
+    [ ] démonstration en local (aucune dépendance réseau)
+    [ ] eau ; montre ou chronomètre visible

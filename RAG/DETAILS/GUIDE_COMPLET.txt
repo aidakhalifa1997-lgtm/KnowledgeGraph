@@ -1,0 +1,305 @@
+====================================================================================================
+                    GUIDE COMPLET DU PROJET : PLATEFORME DE GESTION DES CONNAISSANCES
+                           FONDÉE SUR UN KNOWLEDGE GRAPH ENRICHI PAR UN LLM
+====================================================================================================
+
+Ce guide est le POINT D'ENTRÉE de la documentation pédagogique. Il explique le projet depuis les
+principes premiers, donne le vocabulaire indispensable, propose un ordre de lecture des autres
+fichiers et résume ce qui a été construit, mesuré et ce qui reste à faire.
+
+Public : une personne qui découvre le projet (encadrant, membre du jury, futur mainteneur) ou
+l'auteure elle-même avant la soutenance.
+
+SOMMAIRE
+--------
+  1. Le projet en une page
+  2. Le problème métier
+  3. L'idée de la solution, depuis les principes
+  4. Ce qui a été construit
+  5. Ce qui a été mesuré
+  6. Ce qui n'a PAS été fait (et pourquoi)
+  7. Parcours de lecture de la documentation
+  8. Carte du dépôt
+  9. Glossaire
+ 10. Les dix idées à retenir
+
+
+1. LE PROJET EN UNE PAGE
+=======================
+
+Titre : « Conception et développement d'une plateforme intelligente de gestion des connaissances
+basée sur un Knowledge Graph enrichi par un LLM ». Projet de fin d'études de Master Data
+Engineering.
+
+Question centrale : comment permettre à un collaborateur d'une banque d'interroger la
+documentation interne en langage naturel, en obtenant des réponses EXACTES, SOURCÉES et
+CONFORMES À SES DROITS D'ACCÈS, y compris quand la réponse dépend de relations entre plusieurs
+documents, entités et versions ?
+
+Réponse apportée : une plateforme complète qui
+
+  - lit des documents hétérogènes (PDF, Word, texte, PDF scanné), les nettoie, les contrôle et en
+    extrait entités et relations ;
+  - les range dans un graphe de connaissances Neo4j où chaque fait garde sa provenance ;
+  - répond aux questions en combinant recherche lexicale, recherche vectorielle et parcours du
+    graphe, avec un workflow explicite qui vérifie le contexte, cite ses sources et s'abstient
+    quand il ne sait pas ;
+  - propose aussi une recherche d'experts, des recommandations de documents et une exploration
+    visuelle du graphe ;
+  - est conteneurisée, testée, et évaluée sur un banc d'essai annoté.
+
+Cadre : banque FICTIVE « Orizia Banque », corpus de 35 documents 100 % synthétiques. Aucune donnée
+réelle d'entreprise. Aucune clé de LLM n'a été fournie : toutes les mesures sont en mode
+hors-ligne.
+
+
+2. LE PROBLÈME MÉTIER
+====================
+
+Dans une banque, la connaissance est largement ÉCRITE : procédures, modes opératoires, notes
+d'organisation, chartes et rapports de projets, comptes rendus de comités, guides, rapports
+d'audit. Pourtant elle est difficile à mobiliser :
+
+    Difficulté          Exemple dans le corpus
+    ------------------  -------------------------------------------------------------------
+    Dispersion          les dépendances de CoreNova sont décrites dans un compte rendu, une
+                        note d'architecture et une cartographie
+    Versions            la procédure KYC 1.0 (revue à 24 mois) et 2.0 (revue à 12 mois)
+    Contradictions      le guide de l'outil Sentinel KYC indique encore 24 mois
+    Diffusion           le plan de continuité n'est diffusé qu'à trois directions
+    Doublons            copies de travail, copies exactes
+    Expertise           savoir « qui sait » sur la lutte anti-blanchiment
+    Sécurité            un mémo contient des instructions destinées à détourner un assistant
+
+Les exigences propres au secteur s'ajoutent : traçabilité (pouvoir justifier une information),
+contrôle interne (pouvoir auditer), confidentialité (respecter les habilitations).
+
+
+3. L'IDÉE DE LA SOLUTION, DEPUIS LES PRINCIPES
+=============================================
+
+3.1 Pourquoi pas « juste un LLM » ?
+-----------------------------------
+
+Un grand modèle de langage (LLM) sait rédiger, mais :
+  - il ne connaît pas les documents internes ;
+  - il peut produire une réponse plausible et fausse (« hallucination ») ;
+  - il ne respecte pas de lui-même les droits d'accès ;
+  - ses réponses ne sont pas traçables.
+
+3.2 Le RAG : chercher avant de répondre
+---------------------------------------
+
+Le RAG (génération augmentée par la recherche) ajoute une étape : on cherche d'abord les passages
+pertinents dans les documents, puis on répond À PARTIR de ces passages, en les citant. La
+réponse devient vérifiable. Mais un RAG classique cherche des passages qui RESSEMBLENT à la
+question ; il peine quand la réponse est répartie entre plusieurs documents (« quelles
+applications seraient touchées par une panne de CoreNova, directement ou indirectement ? »).
+
+3.3 Le graphe de connaissances : relier les faits
+-------------------------------------------------
+
+Un graphe de connaissances stocke des faits sous la forme « entité -> relation -> entité »
+(« AML Watch dépend de CoreNova »). Les faits issus de documents différents se rejoignent sur les
+mêmes entités, ce qui permet de les ENCHAÎNER. Dans ce projet, chaque fait garde la liste des
+documents et des phrases qui le justifient (provenance).
+
+3.4 La combinaison : GraphRAG local et recherche hybride
+--------------------------------------------------------
+
+La plateforme combine trois sources de preuves :
+  - BM25 (mots exacts : sigles, références, valeurs) ;
+  - vecteurs (sens proche, paraphrases) ;
+  - graphe (entités de la question, leur voisinage, les chaînes de relations).
+
+Les trois classements sont fusionnés par leurs rangs (Reciprocal Rank Fusion). Le poids du graphe
+dépend du type de question (routage) : faible pour une question factuelle, fort pour une question
+multi-sauts.
+
+3.5 Un workflow qui contrôle
+----------------------------
+
+Entre la recherche et la réponse, un workflow explicite (LangGraph) vérifie que le contexte
+suffit, détecte les versions et les contradictions, relance la recherche une fois si besoin,
+s'abstient sinon, et vérifie enfin les citations et le contenu de la réponse.
+
+3.6 Le contrôle d'accès dès le départ
+-------------------------------------
+
+Les documents autorisés pour l'utilisateur sont calculés AVANT toute recherche et passés à chaque
+requête. Un document non autorisé n'entre jamais dans la chaîne de traitement.
+
+
+4. CE QUI A ÉTÉ CONSTRUIT
+========================
+
+    Couche          Réalisation                                        Dossier (RAG/CODE/)
+    --------------  -------------------------------------------------  -------------------------
+    Ingestion       sécurité des fichiers, PDF/DOCX/TXT, OCR, nettoyage, ingestion/
+                    cartouche, qualité, injection, doublons, versions,
+                    découpage, idempotence
+    Extraction      18 règles, extracteur LLM contraint (optionnel),    extraction/, config/
+                    résolution d'entités en cascade, entités candidates
+    Graphe          Neo4j : schéma, index vectoriel et plein texte,     knowledge_graph/
+                    écriture idempotente, provenance alignée
+    Recherche       BM25, vecteurs, graphe (PageRank personnalisé),     retrieval/
+                    fusion RRF, droits d'accès
+    Orchestration   workflow LangGraph : analyse, recherche, suffisance, orchestration/
+                    relance, génération, vérification, abstention
+    Services        experts (preuves typées), recommandations           expert_discovery/,
+                    (contenu + entités + graphe)                        recommendations/
+    API             FastAPI, JWT, rôles, limitation de débit, en-têtes  backend/
+    Interface       React + Cytoscape : 6 pages                         frontend/
+    Exploitation    Docker Compose, HTTPS (Caddy), sauvegarde/          ../docker-compose*.yml,
+                    restauration, CI                                    scripts/ops/
+    Qualité         103 cas de test (67 unitaires, 36 d'intégration)    tests/
+    Évaluation      banc d'essai, 5 architectures, statistiques         evaluation/
+
+
+5. CE QUI A ÉTÉ MESURÉ
+=====================
+
+(Source unique : RAG/CODE/evaluation/results/RESULTATS.md ; configuration gelée ; hors-ligne.)
+
+  - Recherche (55 questions, nDCG@5) : vectoriel 0,720 ; BM25 0,831 ; hybride 0,803 ; graphe seul
+    0,708 ; hybride + graphe fixe 0,813 ; hybride final routé 0,839.
+  - Réponses (66 questions, exactitude) : RAG vectoriel 0,651 ; RAG hybride 0,606 ; GraphRAG
+    0,515 ; hybride + graphe fixe 0,773 ; hybride final 0,742 (0,882 sur les 17 questions de
+    développement, 0,694 sur les 49 jamais inspectées).
+  - Apport du graphe sur les réponses : relationnelles 0,12 -> 0,62 ; multi-sauts 0,30 -> 0,60
+    (RAG vectoriel -> architecture finale).
+  - Fiabilité : 0 citation inventée, 0 fuite d'accès, 0 chaîne interdite.
+  - Abstention : rappel 0,909, mais 18 % d'abstentions abusives.
+  - Experts : nDCG@3 0,975 contre 0,911 (non significatif) ; recommandations : nDCG@5 0,908 contre
+    0,648 (significatif).
+  - Extraction par règles : F1 0,984 (documents de mise au point) et 0,830 (documents de test).
+  - Reproductibilité : 0 différence sur 1 056 lignes entre deux campagnes.
+
+
+6. CE QUI N'A PAS ÉTÉ FAIT (ET POURQUOI)
+=======================================
+
+    Non fait                              Raison                          Conséquence
+    ------------------------------------  ------------------------------  -------------------------
+    Mesure avec un vrai LLM               aucune clé fournie              apport du LLM inconnu ;
+                                                                          adaptateurs testés avec
+                                                                          des réponses simulées
+    Encodeur neuronal de phrases          aucun modèle téléchargeable     recherche vectorielle
+                                          dans l'environnement            plus faible que l'état
+                                                                          de l'art
+    Évaluation sur documents réels        confidentialité                 résultats valables pour
+                                                                          le banc d'essai
+    Déploiement distant                   hors périmètre réalisé          procédure préparée,
+                                                                          non exécutée
+    SSO, supervision centralisée          dépend de l'infrastructure      prérequis de production
+                                          d'une entreprise
+    GraphRAG global (résumés de           exige un LLM                    perspective
+    communautés)
+    Écran de validation des entités       priorité donnée au cœur         perspective
+    candidates
+
+
+7. PARCOURS DE LECTURE DE LA DOCUMENTATION
+=========================================
+
+    Ordre  Fichier                              Pour comprendre
+    -----  -----------------------------------  ---------------------------------------------
+    1      GUIDE_COMPLET.txt                    le projet dans son ensemble (ce fichier)
+    2      ARCHITECTURE.txt                     les couches, les parcours, le contrôle d'accès
+    3      TECHNOLOGIES_ET_JUSTIFICATIONS.txt   pourquoi chaque technologie
+    4      INGESTION_OCR_EXTRACTION.txt         du fichier aux entités et relations
+    5      KNOWLEDGE_GRAPH_NEO4J.txt            le graphe, la provenance, Cypher
+    6      WORKFLOW_RAG_GRAPHRAG.txt            BM25, vecteurs, RRF, GraphRAG, routage
+    7      LANGGRAPH_ET_ORCHESTRATION.txt       le workflow de réponse, nœud par nœud
+    8      TESTS_ET_EVALUATION.txt              tests, protocole, métriques, résultats
+    9      INSTALLATION_ET_EXECUTION.txt        installer, démontrer, tester, évaluer
+    10     DEPLOIEMENT_ET_MAINTENANCE.txt       serveur, sauvegardes, supervision, hébergement
+    11     PREPARATION_SOUTENANCE.txt           plan de présentation, questions du jury
+
+Lecture rapide (une heure) : 1, 2, 6 (sections 1 à 5 et 12), 8 (sections 5 et 8), 11.
+
+Documents complémentaires :
+  - RAG/RAPPORT ET PRESENTATION/ : mémoire (DOCX et PDF), présentation, figures ;
+  - RAG/RESEARCH PAPERS/BIBLIOGRAPHIE.md : références vérifiées et leur apport au projet ;
+  - RAG/CODE/evaluation/JOURNAL_DEVELOPPEMENT.md : journal des modifications avant et après gel.
+
+
+8. CARTE DU DÉPÔT
+================
+
+    RAG/
+      CODE/                         code (voir ARCHITECTURE.txt, section 10)
+      data/
+        synthetic_data/sources/     sources Markdown des 35 documents (avec annotations)
+        synthetic_data/gold/        vérités terrain : questions, experts, recommandations,
+                                    résolution d'entités, guide d'annotation
+        synthetic_data/referentials référentiel d'entités (noms, alias, domaines)
+        sample_documents/           corpus généré (PDF, DOCX, TXT)
+      DETAILS/                      documentation pédagogique (ces fichiers)
+      RAPPORT ET PRESENTATION/      mémoire, présentation, figures, sources du mémoire
+      RESEARCH PAPERS/              bibliographie, matrice de littérature, synthèse critique
+      docker-compose*.yml, Makefile, .env.example
+
+
+9. GLOSSAIRE
+===========
+
+  Abstention         réponse « je ne dispose pas d'informations suffisantes » quand le contexte
+                     ne permet pas de répondre ; préférée à une réponse inventée.
+  Alias              autre nom d'une entité (« S. Idrissi » pour « Salma Idrissi »).
+  BM25               score de pertinence lexicale : mots partagés, rareté des mots, longueur.
+  Bootstrap          estimation de l'incertitude en rééchantillonnant les questions avec remise.
+  Cartouche          bloc d'en-tête normalisé d'un document (référence, version, diffusion...).
+  Chunk (passage)    morceau de document (environ 900 caractères) indexé pour la recherche.
+  Citation [Cn]/[Fn] renvoi d'une phrase de la réponse à un passage (C) ou un fait du graphe (F).
+  Cypher             langage de requête de Neo4j, fondé sur des motifs de graphe.
+  Diffusion          liste des groupes autorisés à lire un document (« ALL » = tous).
+  Embedding          vecteur de nombres représentant le sens d'un texte.
+  Entité             objet métier : personne, direction, projet, procédure, application,
+                     concept, domaine.
+  Entité candidate   entité repérée mais non validée (correspondance incertaine), à revoir.
+  GraphRAG           RAG qui exploite un graphe de connaissances ; « local » : à partir des
+                     entités de la question.
+  Hallucination      affirmation produite par un modèle sans fondement dans les sources.
+  HNSW               index de recherche approchée des plus proches voisins vectoriels.
+  Idempotence        relancer une opération ne change pas le résultat (ingestion relancée).
+  IDF                poids d'un mot d'autant plus grand qu'il est rare dans le corpus.
+  Injection de       instructions cachées dans un document pour détourner un assistant IA.
+  prompt indirecte
+  LangGraph          bibliothèque pour décrire un traitement comme un graphe d'états.
+  LLM                grand modèle de langage.
+  MinHash            signature compacte permettant d'estimer la ressemblance de deux textes.
+  nDCG@k             qualité d'un classement : documents pertinents placés haut, essentiels
+                     comptant plus que les utiles.
+  OCR                reconnaissance optique de caractères (texte d'une image ou d'un scan).
+  Ontologie          liste des types d'entités et de relations autorisés, et de leurs règles.
+  PageRank           marche aléatoire qui revient aux entités de la question ; classe les
+  personnalisé       entités du voisinage par importance.
+  Provenance         documents, passages et citations qui justifient un fait du graphe.
+  Quarantaine        statut d'un document suspect : conservé pour revue, jamais indexé.
+  RAG                génération augmentée par la recherche : chercher puis répondre en citant.
+  Routage            choix du poids du graphe selon le type de question.
+  RRF                Reciprocal Rank Fusion : fusion de classements par leurs rangs.
+  Suffisance         contrôle que le contexte trouvé couvre la question avant de répondre.
+  Workflow           enchaînement explicite d'étapes et de décisions.
+
+
+10. LES DIX IDÉES À RETENIR
+==========================
+
+  1. Le LLM est un maillon optionnel : la plateforme fonctionne et se mesure sans lui.
+  2. Les droits d'accès sont appliqués AVANT la recherche, dans chaque requête.
+  3. Chaque fait du graphe sait de quels documents et de quelles phrases il vient.
+  4. Le graphe aide les questions relationnelles et multi-sauts, pas les questions factuelles :
+     d'où le routage.
+  5. BM25 est une référence très forte ; une recherche hybride ne vaut que par la qualité de son
+     encodeur vectoriel.
+  6. S'abstenir à bon escient est une fonctionnalité, mais trop d'abstentions rendent l'outil
+     inutile : le seuil est une décision métier.
+  7. Une réponse est vérifiée après génération : citations réelles, phrases appuyées, contenu
+     assaini.
+  8. Le chiffre honnête est celui des questions jamais inspectées (0,694), pas celui des
+     questions de mise au point (0,882).
+  9. La reproductibilité (ORDER BY, graines, versions figées) est une exigence d'auditabilité.
+ 10. La plateforme est un prototype évalué, pas un service de production : les écarts restants
+     relèvent surtout de l'intégration au système d'information et de la gouvernance.

@@ -1,0 +1,320 @@
+====================================================================================================
+                                DÉPLOIEMENT, EXPLOITATION ET MAINTENANCE
+====================================================================================================
+
+Objectif : savoir déployer la plateforme sur un serveur, l'exploiter au quotidien (supervision,
+sauvegardes, mises à jour) et choisir un hébergement adapté.
+
+ÉTAT RÉEL : la plateforme a été construite, démarrée et testée avec Docker Compose sur la machine
+de développement (démarrage, ingestion dans le conteneur, persistance après arrêt, sauvegarde,
+suppression volontaire des données et restauration). AUCUN déploiement distant n'a été réalisé :
+ce document décrit une procédure préparée, pas une mise en service effectuée. La plateforme n'est
+pas présentée comme prête pour la production (voir section 9).
+
+SOMMAIRE
+--------
+  1. Ce qui est déployé : trois conteneurs
+  2. Les choix de sécurité des conteneurs
+  3. Déployer sur un serveur avec HTTPS (surcharge de production)
+  4. Sauvegarder et restaurer
+  5. Superviser
+  6. Mettre à jour
+  7. Maintenance du corpus et du modèle de connaissances
+  8. Choisir un hébergement
+  9. Avant une mise en production : liste de contrôle
+ 10. Procédures d'incident
+
+
+1. CE QUI EST DÉPLOYÉ : TROIS CONTENEURS
+=======================================
+
+                    Internet (production uniquement)
+                              |
+                              v  80/443
+                     +-----------------+
+                     |  caddy          |  HTTPS automatique (Let's Encrypt), HSTS
+                     +-----------------+
+                              |  réseau Docker interne
+                              v
+                     +-----------------+
+    127.0.0.1:8080 ->|  frontend       |  nginx non privilégié : interface + relais /api
+     (local)         +-----------------+
+                              |
+                              v
+                     +-----------------+
+                     |  backend        |  FastAPI (1 processus), Tesseract, modèles NLP
+                     |                 |  volume « uploads » (documents téléversés)
+                     +-----------------+
+                              |  bolt://neo4j:7687
+                              v
+                     +-----------------+
+                     |  neo4j          |  Neo4j 5.26 Community, volumes data et logs,
+                     |                 |  dossier ./backups monté pour les sauvegardes
+                     +-----------------+
+
+Fichiers :
+  - RAG/docker-compose.yml        configuration de base (locale ou serveur derrière un proxy)
+  - RAG/docker-compose.debug.yml  publie Neo4j sur 127.0.0.1 (débogage local uniquement)
+  - RAG/docker-compose.prod.yml   ajoute Caddy (HTTPS) et retire la publication directe
+  - RAG/CODE/Dockerfile, RAG/CODE/frontend/Dockerfile, RAG/CODE/deploy/Caddyfile
+
+Démarrage ordonné par les contrôles de santé (healthcheck) : le backend attend que Neo4j réponde,
+le frontend attend que l'API réponde (GET /api/health).
+
+
+2. LES CHOIX DE SÉCURITÉ DES CONTENEURS
+======================================
+
+    Mesure                                       Effet
+    -------------------------------------------  ------------------------------------------------
+    Neo4j sans port publié                       la base n'est joignable que par le backend
+    Interface publiée sur 127.0.0.1 par défaut   rien n'est exposé au réseau sans décision
+                                                 explicite (HTTP_BIND)
+    read_only: true (backend, frontend)          système de fichiers en lecture seule : un
+                                                 attaquant ne peut pas modifier le code
+    tmpfs /tmp limité                            seul espace d'écriture temporaire, borné
+    cap_drop: [ALL]                              aucune capacité Linux privilégiée
+    no-new-privileges                            pas d'élévation de privilèges (setuid)
+    USER app (backend), nginx non privilégié     processus non root
+    Images avec versions de base explicites      reconstruction reproductible
+    Secrets dans .env (droits 600), hors Git     aucun secret dans les images ni le dépôt
+    Modèles NLP inclus dans l'image              aucun téléchargement au démarrage
+
+L'image du backend est construite en deux étapes (« multi-stage ») : une étape installe les
+dépendances, l'étape finale ne contient que ce qui est nécessaire à l'exécution.
+
+
+3. DÉPLOYER SUR UN SERVEUR AVEC HTTPS (SURCHARGE DE PRODUCTION)
+==============================================================
+
+Prérequis : un serveur Linux avec Docker, un nom de domaine dont l'enregistrement DNS pointe vers
+le serveur, les ports 80 et 443 ouverts, et les comptes de démonstration REMPLACÉS.
+
+  1. Copier le dépôt sur le serveur (sans .env local) et se placer dans RAG/.
+  2. make env (secrets aléatoires propres au serveur).
+  3. Créer les comptes réels (section 4 de INSTALLATION_ET_EXECUTION.txt) et renseigner
+     USERS_FILE dans .env vers ce fichier non versionné.
+  4. Démarrer :
+
+        DOMAIN=kg.exemple.org ACME_EMAIL=exploitation@exemple.org \
+        docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+  5. Charger le corpus : docker compose exec backend python -m scripts.ingest
+  6. Vérifier : https://kg.exemple.org/api/health et la connexion.
+
+Caddy obtient et renouvelle automatiquement les certificats TLS, ajoute l'en-tête HSTS (le
+navigateur n'utilisera plus que HTTPS) et retire l'en-tête Server. La variable CORS_ORIGINS du
+backend est restreinte au domaine. La ligne « ports: !reset [] » de la surcharge retire la
+publication directe du frontend : on ne peut plus le joindre qu'à travers Caddy.
+
+Dans une banque, cette étape serait remplacée par l'infrastructure existante (reverse proxy et
+certificats de l'entreprise, authentification unique) : voir le chapitre 7 du mémoire.
+
+
+4. SAUVEGARDER ET RESTAURER
+==========================
+
+4.1 Sauvegarde (make backup -> CODE/scripts/ops/backup.sh)
+----------------------------------------------------------
+
+    [1/4] Arrêt du backend et de Neo4j
+    [2/4] Dump de la base Neo4j          neo4j-admin database dump
+    [3/4] Archive des fichiers téléversés uploads.tar.gz
+    [4/4] Empreintes                      SHA256SUMS
+
+Résultat : backups/<horodatage UTC>/ contenant neo4j.dump, uploads.tar.gz et SHA256SUMS. Le
+dossier reçoit les droits 700.
+
+Points d'attention :
+  - Neo4j Community ne permet pas la sauvegarde à chaud : le service est INTERROMPU pendant le
+    dump (quelques secondes pour ce volume). Un « trap » garantit le redémarrage des services même
+    si la sauvegarde échoue ;
+  - le fichier .env (secrets) n'est volontairement PAS sauvegardé avec les données : il relève
+    d'un coffre-fort de secrets ;
+  - les sauvegardes doivent être copiées HORS du serveur (une sauvegarde sur le même disque ne
+    protège pas d'une panne du disque).
+
+4.2 Restauration (make restore BACKUP=backups/<horodatage>)
+------------------------------------------------------------
+
+    [1/5] Vérification des empreintes    sha256sum -c : refus si un fichier est altéré
+    [2/5] Arrêt du backend et de Neo4j
+    [3/5] Chargement du dump             neo4j-admin database load --overwrite-destination
+    [4/5] Restauration des fichiers téléversés
+    [5/5] Redémarrage
+
+TEST RÉALISÉ : sauvegarde, suppression volontaire de toutes les données du graphe, restauration ;
+315 nœuds retrouvés et plateforme de nouveau opérationnelle. Une sauvegarde qui n'a jamais été
+restaurée n'est pas une sauvegarde : ce test doit être refait périodiquement.
+
+4.3 Politique proposée
+----------------------
+
+    Fréquence     quotidienne (et avant chaque mise à jour)
+    Rétention     7 quotidiennes, 4 hebdomadaires, 12 mensuelles (à adapter à la politique
+                  de la banque)
+    Copie         hors du serveur, chiffrée
+    Test          restauration mensuelle sur un environnement de recette
+    Alternative   le graphe peut aussi être RECONSTRUIT entièrement à partir des documents
+                  source (make reingest) : la sauvegarde accélère la reprise, la source
+                  documentaire reste la référence
+
+
+5. SUPERVISER
+============
+
+    Indicateur                     Où le lire
+    -----------------------------  -----------------------------------------------------------
+    État des services              docker compose ps (healthy / unhealthy)
+    État de l'API et de Neo4j      GET /api/health ("neo4j":"up" ou "down")
+    Latences et erreurs par route  GET /api/metrics (rôle admin) : appels, erreurs 5xx,
+                                   p50 et p95
+    Journaux                       docker compose logs backend : JSON, une ligne par requête
+                                   (identifiant, utilisateur, route, statut, durée), secrets
+                                   masqués
+    Historique des ingestions      GET /api/ingestion/runs ou page Documents (admin)
+    Qualité des réponses           campagne d'évaluation rejouée périodiquement
+                                   (TESTS_ET_EVALUATION.txt)
+
+Les métriques sont conservées en mémoire et remises à zéro au redémarrage : en production, les
+journaux JSON et les métriques devraient être envoyés vers l'outil de supervision de l'entreprise.
+Chaque réponse HTTP porte un en-tête X-Request-ID qui permet de retrouver la ligne de journal
+correspondante lors d'un incident.
+
+
+6. METTRE À JOUR
+===============
+
+  1. make backup
+  2. récupérer la nouvelle version du code (git pull sur la branche validée)
+  3. make up (reconstruit les images et redémarre)
+  4. vérifier /api/health et un parcours de démonstration
+  5. si l'encodeur vectoriel a changé : make reingest (la dimension de l'index change)
+  6. en cas de problème : revenir au commit précédent, make up, et si nécessaire
+     make restore BACKUP=...
+
+Dépendances : les versions sont figées (requirements.txt, package-lock.json). Les mettre à jour
+est une décision explicite, suivie des tests et de pip-audit. L'intégration continue signale les
+vulnérabilités connues des dépendances.
+
+
+7. MAINTENANCE DU CORPUS ET DU MODÈLE DE CONNAISSANCES
+=====================================================
+
+  - Ajouter, modifier ou retirer des documents : déposer le fichier dans le répertoire source
+    (ou par la page Documents, rôle admin) puis relancer l'ingestion. La synchronisation est
+    idempotente ; un document retiré de la source est retiré du graphe avec les relations qu'il
+    était seul à justifier.
+  - Traiter la quarantaine : un document en quarantaine contient des motifs d'injection. Il doit
+    être examiné par une personne (sécurité), puis corrigé à la source ou définitivement retiré.
+  - Valider les entités candidates : requête de la section 11 de KNOWLEDGE_GRAPH_NEO4J.txt ; les
+    alias validés sont ajoutés au référentiel (data/synthetic_data/referentials/referentials.yaml
+    dans la démonstration), puis réingestion.
+  - Faire évoluer l'ontologie ou les règles : core/ontology.py et config/extraction_rules.yaml,
+    TOUJOURS suivis des tests et d'une nouvelle campagne d'évaluation pour vérifier l'absence de
+    régression.
+
+Les rôles et responsabilités correspondants (propriétaires de documents, gestionnaire des
+connaissances, administrateur) sont décrits au chapitre 7 du mémoire (matrice RACI).
+
+
+8. CHOISIR UN HÉBERGEMENT
+========================
+
+8.1 Contraintes de la plateforme
+--------------------------------
+
+  - trois conteneurs dont une base Neo4j qui a besoin d'un disque PERSISTANT ;
+  - environ 2 à 3 Go de mémoire au total (Neo4j configuré avec 1 Go de tas et 512 Mo de cache,
+    plus l'API et ses modèles NLP) ;
+  - un processus d'API à mémoire locale (limiteur de débit, métriques) : une seule instance ;
+  - l'OCR consomme du CPU pendant l'ingestion.
+
+8.2 Comparaison des options
+---------------------------
+
+Les offres commerciales (prix, quotas, gratuité) changent souvent : elles sont à vérifier sur le
+site de chaque fournisseur au moment du choix. La comparaison ci-dessous est qualitative.
+
+    Option                         Adéquation            Points forts            Limites
+    -----------------------------  --------------------  ----------------------  ----------------------
+    Serveur virtuel (VPS) avec     bonne (démonstration  configuration testée    exploitation manuelle
+    Docker Compose                 ou pilote)            telle quelle, coût      (mises à jour, OS)
+                                                         maîtrisé, disque
+                                                         persistant
+    Serveur interne de la banque   la seule acceptable   données dans le         délais de mise à
+    (Compose)                      pour des documents    périmètre de la         disposition,
+                                   réels                 banque                  homologation
+    Cloud public IaaS (machine     bonne                 robustesse, sauvegardes données hors de la
+    virtuelle Azure, AWS, GCP...)                        de disque gérées        banque sauf contrat
+                                                                                 et localisation
+    PaaS de conteneurs (Render,    moyenne               déploiement simple      disque persistant et
+    Railway, Fly.io...)                                  depuis le dépôt         multi-conteneurs
+                                                                                 souvent limités ou
+                                                                                 payants ; à vérifier
+    Neo4j managé (AuraDB) +        moyenne               base gérée              données chez un tiers ;
+    PaaS pour l'API                                                              fonctions disponibles
+                                                                                 (index vectoriel) et
+                                                                                 limites de l'offre à
+                                                                                 vérifier
+    Espaces de démonstration ML    faible                gratuité possible       un seul conteneur,
+    (type Hugging Face Spaces)                                                   pas de persistance
+                                                                                 adaptée à Neo4j
+    Kubernetes interne             à terme               haute disponibilité,    complexité ;
+                                                         montée en charge        disproportionné pour
+                                                                                 un pilote
+
+8.3 Recommandation
+------------------
+
+  - Démonstration publique (corpus FICTIF uniquement) : un petit serveur virtuel avec Docker
+    Compose et la surcharge de production (Caddy). C'est la configuration testée.
+  - Pilote avec des documents réels : un serveur INTERNE de la banque, derrière son
+    infrastructure de sécurité, après homologation.
+  - Jamais de documents réels sur un hébergement public de démonstration.
+
+Pour une démonstration en ligne, il faudrait encore : choisir l'hébergeur, créer le serveur,
+configurer le DNS, déployer, puis VÉRIFIER l'application distante (santé, connexion, parcours de
+démonstration, en-têtes HTTPS). Tant que cette vérification n'a pas eu lieu, le déploiement ne
+peut pas être considéré comme réalisé.
+
+
+9. AVANT UNE MISE EN PRODUCTION : LISTE DE CONTRÔLE
+==================================================
+
+Ces points ne sont PAS couverts par le prototype et doivent l'être avant tout usage réel :
+
+  [ ] authentification unique (SSO) et groupes issus de l'annuaire ; comptes de démonstration
+      supprimés
+  [ ] homologation de sécurité, analyse de risques, avis du DPO (la recherche d'experts traite
+      des données personnelles)
+  [ ] secrets dans un coffre-fort ; rotation planifiée
+  [ ] journaux et métriques centralisés ; alertes (API dégradée, Neo4j indisponible, erreurs 5xx)
+  [ ] sauvegardes automatisées, externalisées, testées par restauration
+  [ ] limitation de débit partagée si plusieurs instances (par exemple Redis)
+  [ ] décision sur l'usage d'un LLM (fournisseur, contrat, classification des données) et
+      nouvelle campagne d'évaluation avec ce LLM
+  [ ] évaluation sur un corpus réel (pilote) avec des questions posées par les métiers
+  [ ] procédure de traitement de la quarantaine et de validation des entités candidates
+  [ ] plan de continuité : reconstruction possible depuis les documents source
+
+
+10. PROCÉDURES D'INCIDENT
+========================
+
+    Situation                          Action
+    ---------------------------------  --------------------------------------------------------
+    API « unhealthy »                  docker compose logs backend ; vérifier .env (secrets),
+                                       /api/health ; redémarrer le service
+    Neo4j indisponible                 l'API répond 503 (message clair) ; docker compose logs
+                                       neo4j ; vérifier l'espace disque ; redémarrer
+    Données corrompues ou supprimées   make restore BACKUP=<dernière sauvegarde valide>, ou
+                                       make reingest depuis les documents source
+    Document suspect signalé           vérifier son statut (quarantaine ?) ; le retirer de la
+                                       source et relancer l'ingestion
+    Fuite d'information suspectée      vérifier la diffusion déclarée dans le cartouche du
+                                       document et les groupes de l'utilisateur ; relancer le
+                                       test test_retrieval_never_returns_unauthorized_content
+    Clé d'API exposée                  la révoquer immédiatement chez le fournisseur, en créer
+                                       une nouvelle, mettre à jour .env, redémarrer ; rechercher
+                                       la clé dans l'historique Git (gitleaks)
