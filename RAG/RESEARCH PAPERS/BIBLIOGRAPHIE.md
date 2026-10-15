@@ -144,7 +144,7 @@ Légende du statut :
 
 ### [10] Hogan et al. (2021) — Knowledge Graphs
 - **Titre exact :** Knowledge Graphs
-- **Auteurs :** Aidan Hogan, Eva Blomqvist, Michael Cochez, Claudia d'Amato, Gerard de Melo, Claudio Gutiérrez, et al. (dont Juan Sequeda, Steffen Staab)
+- **Auteurs :** Aidan Hogan, Eva Blomqvist, Michael Cochez, Claudia d'Amato, Gerard de Melo, Claudio Gutiérrez, Sabrina Kirrane, José Emilio Labra Gayo, Roberto Navigli, Sebastian Neumaier, Axel-Cyrille Ngonga Ngomo, Axel Polleres, Sabbir M. Rashid, Anisa Rula, Lukas Schmelzeisen, Juan Sequeda, Steffen Staab, Antoine Zimmermann (liste complétée en octobre 2026 à partir du PDF éditeur et du dépôt de l'Université de Southampton)
 - **Année / lieu :** 2021, *ACM Computing Surveys*, vol. 54, n° 4, article 71
 - **DOI :** 10.1145/3447772
 - **Statut :** Publié (évalué par les pairs, accès ouvert)
@@ -267,7 +267,7 @@ Légende du statut :
 
 ### [21] Xu et al. (2024) — LLM pour l'extraction d'information générative
 - **Titre exact :** Large Language Models for Generative Information Extraction: A Survey
-- **Auteurs :** Derong Xu, Wei Chen, Wenjun Peng, et al.
+- **Auteurs :** Derong Xu, Wei Chen, Wenjun Peng, Chao Zhang, Tong Xu, Xiangyu Zhao, Xian Wu, Yefeng Zheng, Yang Wang, Enhong Chen (article 186357 du volume 18, n° 6)
 - **Année / lieu :** 2024, *Frontiers of Computer Science*, vol. 18, n° 6 — arXiv : 2312.17617
 - **DOI :** 10.1007/s11704-024-40555-y
 - **Statut :** Publié (évalué par les pairs)
@@ -275,7 +275,7 @@ Légende du statut :
 
 ### [22] Zhu et al. (2024) — LLM pour la construction et le raisonnement sur KG
 - **Titre exact :** LLMs for Knowledge Graph Construction and Reasoning: Recent Capabilities and Future Opportunities
-- **Auteurs :** Yuqi Zhu et huit coauteurs (Zhejiang University, National University of Singapore)
+- **Auteurs :** Yuqi Zhu, Xiaohan Wang, Jing Chen, Shuofei Qiao, Yixin Ou, Yunzhi Yao, Shumin Deng, Huajun Chen, Ningyu Zhang (Zhejiang University, National University of Singapore)
 - **Année / lieu :** arXiv:2305.13168 (v4 de décembre 2024). Publication dans la revue *World Wide Web* (2024) signalée par des sources secondaires **[à vérifier sur le site de l'éditeur]**.
 - **Statut :** Prépublication confirmée ; publication en revue non vérifiée
 - **Résultats importants :** GPT-4 est plus performant comme assistant d'inférence que comme extracteur *few-shot*.
@@ -350,7 +350,7 @@ Légende du statut :
 
 ### [30] Ji et al. (2023) — Hallucinations
 - **Titre exact :** Survey of Hallucination in Natural Language Generation
-- **Auteurs :** Ziwei Ji, Nayeon Lee, et al. (HKUST)
+- **Auteurs :** Ziwei Ji, Nayeon Lee, Rita Frieske, Tiezheng Yu, Dan Su, Yan Xu, Etsuko Ishii, Yejin Bang, Wenliang Dai, Andrea Madotto, Pascale Fung (HKUST ; Wenliang Dai n'apparaît qu'à partir des versions arXiv postérieures à la v3)
 - **Année / lieu :** 2023, *ACM Computing Surveys*, vol. 55, n° 12, article 248 — arXiv : 2202.03629
 - **DOI :** **[non confirmé par la recherche ; ne pas l'indiquer sans vérification]**
 - **Statut :** Publié (évalué par les pairs)

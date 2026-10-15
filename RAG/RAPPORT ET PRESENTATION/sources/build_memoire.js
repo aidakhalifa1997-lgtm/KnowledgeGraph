@@ -150,9 +150,10 @@ function convert(markdown, state) {
   const lines = markdown.replace(/\r/g, "").split("\n");
   let i = 0;
   let paragraph = [];
+  let referenceMode = false;  // « <!-- references --> » : entrées bibliographiques à retrait suspendu
   const flush = () => {
     if (paragraph.length) {
-      out.push(new Paragraph({ style: "BodyText", children: inlineRuns(paragraph.join(" ")) }));
+      out.push(new Paragraph({ style: referenceMode ? "Reference" : "BodyText", children: inlineRuns(paragraph.join(" ")) }));
       paragraph = [];
     }
   };
@@ -161,6 +162,7 @@ function convert(markdown, state) {
     const trimmed = line.trim();
     if (!trimmed) { flush(); i += 1; continue; }
     if (trimmed === "<!-- pagebreak -->") { flush(); out.push(new Paragraph({ children: [new PageBreak()] })); i += 1; continue; }
+    if (trimmed === "<!-- references -->") { flush(); referenceMode = true; i += 1; continue; }
     if (trimmed.startsWith("<!--")) { i += 1; continue; }
     if (trimmed === "[[SOMMAIRE]]") {
       flush();
@@ -174,7 +176,7 @@ function convert(markdown, state) {
       i += 1; continue;
     }
     const h = /^(#{1,4})\s+(.*)$/.exec(trimmed);
-    if (h) { flush(); out.push(heading(h[1].length, h[2])); i += 1; continue; }
+    if (h) { flush(); if (h[1].length <= 2) referenceMode = false; out.push(heading(h[1].length, h[2])); i += 1; continue; }
     if (trimmed.startsWith("```")) {
       flush();
       const code = [];
@@ -292,6 +294,8 @@ async function main() {
           run: { font: HEAD_FONT, size: 36, bold: true, color: ACCENT }, paragraph: { spacing: { before: 240, after: 360 }, keepNext: true } },
         { id: "BodyText", name: "Body Text", basedOn: "Normal", quickFormat: true,
           paragraph: { alignment: AlignmentType.JUSTIFIED, spacing: { after: 140, line: 336, lineRule: LineRuleType.AUTO } } },
+        { id: "Reference", name: "Reference", basedOn: "Normal",
+          paragraph: { alignment: AlignmentType.LEFT, indent: { left: 567, hanging: 567 }, spacing: { after: 120, line: 300, lineRule: LineRuleType.AUTO } } },
         { id: "ListText", name: "List Text", basedOn: "Normal",
           paragraph: { alignment: AlignmentType.JUSTIFIED, spacing: { after: 70, line: 312, lineRule: LineRuleType.AUTO } } },
         { id: "Caption", name: "Caption", basedOn: "Normal", next: "BodyText",

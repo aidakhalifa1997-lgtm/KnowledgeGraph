@@ -14,7 +14,7 @@ La supériorité de la recherche dense n'est cependant pas générale. Le banc d
 
 ## La génération augmentée par la recherche
 
-Lewis et al. (2020) ont introduit le terme RAG pour désigner l'association d'une mémoire non paramétrique, un index de passages, et d'un générateur. Le modèle répond à partir des passages récupérés, ce qui permet de mettre à jour les connaissances sans réentraînement et de citer des sources. Les synthèses ultérieures distinguent un RAG « naïf », qui récupère puis génère, de variantes « avancées » ou « modulaires » qui ajoutent des étapes : reformulation de la requête, fusion de plusieurs recherches, réordonnancement, vérification (Gao et al., 2023).
+Lewis et al. (2020) ont introduit le terme RAG pour désigner l'association d'une mémoire non paramétrique, un index de passages, et d'un générateur. Le modèle répond à partir des passages récupérés, ce qui permet de mettre à jour les connaissances sans réentraînement et de citer des sources. Les synthèses ultérieures distinguent un RAG « naïf », qui récupère puis génère, de variantes « avancées » ou « modulaires » qui ajoutent des étapes : reformulation de la requête, fusion de plusieurs recherches, réordonnancement, vérification (Y. Gao et al., 2023).
 
 Le RAG reste limité par la qualité de la récupération : si les passages pertinents ne sont pas retrouvés, le générateur ne peut que s'abstenir ou extrapoler. Il traite aussi mal les questions dont la réponse exige de relier plusieurs passages, par exemple « quelles applications seraient affectées par l'indisponibilité du système central, et qui en est responsable ? ». Le jeu de données HotpotQA a mis en évidence ces questions multi-sauts et l'intérêt d'annoter les « faits justificatifs » nécessaires à la réponse (Yang et al., 2018), idée que nous reprenons dans notre banc d'essai.
 
@@ -30,7 +30,7 @@ Le langage Cypher, formalisé par Francis et al. (2018), décrit les requêtes p
 
 La construction d'un graphe à partir de documents passe par la reconnaissance des entités, l'extraction des relations entre elles et la résolution des entités, qui rattache des mentions différentes (« Mme Idrissi », « S. Idrissi ») à une même entité canonique.
 
-Les grands modèles de langage ont renouvelé l'extraction de relations. Wadhwa et al. (2023) montrent qu'ils sont compétitifs en apprentissage à partir de quelques exemples, mais soulignent que l'évaluation par correspondance exacte est mal adaptée à des sorties génératives. Xu et al. (2024) dressent un panorama de l'extraction d'information générative. Zhu et al. (2024) observent qu'un modèle comme GPT-4 est plus performant comme assistant d'inférence que comme extracteur à partir de quelques exemples. Pan et al. (2024) proposent une feuille de route pour unifier modèles de langage et graphes : les graphes apportent aux LLM des faits structurés et vérifiables, les LLM aident à construire et à interroger les graphes.
+Les grands modèles de langage ont renouvelé l'extraction de relations. Wadhwa et al. (2023) montrent qu'ils sont compétitifs en apprentissage à partir de quelques exemples, mais soulignent que l'évaluation par correspondance exacte est mal adaptée à des sorties génératives. D. Xu et al. (2024) dressent un panorama de l'extraction d'information générative. Zhu et al. (2024) observent qu'un modèle comme GPT-4 est plus performant comme assistant d'inférence que comme extracteur à partir de quelques exemples. Pan et al. (2024) proposent une feuille de route pour unifier modèles de langage et graphes : les graphes apportent aux LLM des faits structurés et vérifiables, les LLM aident à construire et à interroger les graphes.
 
 Ces travaux convergent vers une recommandation de prudence : la sortie d'un LLM doit être contrainte (schéma, ontologie) et vérifiée avant d'entrer dans un graphe destiné à servir de référence.
 
@@ -42,7 +42,7 @@ Le dédoublonnage de documents relève d'une problématique voisine. Broder (199
 
 ### Documents numérisés
 
-Une partie de la documentation d'entreprise n'existe qu'en version scannée. La reconnaissance optique de caractères Tesseract, dont Smith (2007) décrit l'architecture, reste une référence libre. Des modèles plus récents exploitent conjointement le texte et la mise en page (Xu et al., 2020), mais leur coût et leur dépendance à des modèles pré-entraînés dépassent le besoin d'un corpus où les documents scannés sont l'exception.
+Une partie de la documentation d'entreprise n'existe qu'en version scannée. La reconnaissance optique de caractères Tesseract, dont Smith (2007) décrit l'architecture, reste une référence libre. Des modèles plus récents exploitent conjointement le texte et la mise en page (Y. Xu et al., 2020), mais leur coût et leur dépendance à des modèles pré-entraînés dépassent le besoin d'un corpus où les documents scannés sont l'exception.
 
 ## GraphRAG : apports et limites
 
@@ -54,7 +54,7 @@ Les synthèses récentes décrivent GraphRAG en trois temps : indexation fondée
 
 **L'exploration pilotée par un LLM.** Think-on-Graph fait parcourir le graphe pas à pas par un LLM, qui choisit les relations à suivre (Sun et al., 2024). C'est l'approche la plus souple, mais aussi la plus coûteuse et la moins déterministe.
 
-LightRAG combine indexation par graphe et recherche vectorielle et insiste sur la mise à jour incrémentale de l'index (Guo et al., 2024), point essentiel lorsque les documents évoluent.
+LightRAG combine indexation par graphe et recherche vectorielle et insiste sur la mise à jour incrémentale de l'index (Z. Guo et al., 2025), point essentiel lorsque les documents évoluent.
 
 Aucun de ces travaux ne montre une supériorité de GraphRAG sur tous les types de questions. Pour une question factuelle dont la réponse tient dans un passage, le graphe n'apporte a priori rien et peut ajouter du bruit. Cette observation fonde le choix d'un **routage** des questions, que nous présentons au chapitre 4.
 
@@ -66,7 +66,7 @@ Ces approches posent une question de conception : faut-il laisser le modèle pil
 
 ## Fiabilité : hallucinations, citations et abstention
 
-Ji et al. (2023) distinguent les hallucinations intrinsèques, qui contredisent la source, des hallucinations extrinsèques, qui ajoutent une information invérifiable. Pour les réduire, la génération avec citations oblige le modèle à rattacher chaque affirmation à un passage. Le banc d'essai ALCE mesure la qualité des citations par leur rappel, chaque affirmation étant-elle soutenue, et leur précision, chaque citation étant-elle utile (Gao, Yen, Yu et Chen, 2023). Il montre que même les meilleurs modèles laissent de nombreuses affirmations sans soutien.
+Ji et al. (2023) distinguent les hallucinations intrinsèques, qui contredisent la source, des hallucinations extrinsèques, qui ajoutent une information invérifiable. Pour les réduire, la génération avec citations oblige le modèle à rattacher chaque affirmation à un passage. Le banc d'essai ALCE mesure la qualité des citations par leur rappel, chaque affirmation étant-elle soutenue, et leur précision, chaque citation étant-elle utile (T. Gao et al., 2023). Il montre que même les meilleurs modèles laissent de nombreuses affirmations sans soutien.
 
 La place de l'information dans le contexte compte également : les modèles exploitent moins bien les informations situées au milieu d'un contexte long (Liu et al., 2024). Il est donc préférable de limiter le contexte et de placer les éléments les plus pertinents en tête.
 
@@ -82,7 +82,7 @@ Pour un assistant documentaire, cette menace s'ajoute à une exigence plus class
 
 La recherche d'experts consiste à classer des personnes selon leur compétence sur un sujet, à partir des documents qui les associent à ce sujet. Balog et al. (2006) ont montré que les approches centrées sur les documents, qui agrègent les preuves documentaires associées à chaque candidat, sont plus efficaces que la modélisation directe des candidats. Leur synthèse ultérieure souligne aussi les enjeux de confidentialité propres à cet usage (Balog et al., 2012).
 
-Les systèmes de recommandation fondés sur des graphes de connaissances combinent plongements, chemins et propagation dans le graphe (Guo et al., 2022). Les chemins ont l'avantage de fournir une explication : un document est recommandé parce qu'il porte sur la même procédure, cite la même application ou en constitue une version antérieure.
+Les systèmes de recommandation fondés sur des graphes de connaissances combinent plongements, chemins et propagation dans le graphe (Q. Guo et al., 2022). Les chemins ont l'avantage de fournir une explication : un document est recommandé parce qu'il porte sur la même procédure, cite la même application ou en constitue une version antérieure.
 
 ## Synthèse et positionnement
 
