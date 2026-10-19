@@ -1,0 +1,292 @@
+# =============================================================================
+# Exemples de questions pour le routage RAG simple / GraphRAG
+# -----------------------------------------------------------------------------
+# Usage : exemples annotés (few-shot) injectés dans le prompt d'un routeur LLM, ou
+# jeu d'essai pour mesurer le routeur déterministe (orchestration/classifier.py).
+#
+# Règle de décision (à injecter avec les exemples) :
+#   rag_simple : la réponse se trouve dans UN passage d'un document (définition,
+#                délai, seuil, étape, rôle décrit dans le texte, texte cité, version).
+#                Il suffit de trouver le bon extrait.
+#   graphrag   : la réponse est une RELATION entre entités du graphe (personne,
+#                entité, projet, procédure, système, concept, domaine), ou exige de
+#                suivre plusieurs relations, de parcourir une relation dans le sens
+#                inverse, ou de lister exhaustivement les entités liées.
+#   En cas de doute, choisir graphrag : la stratégie hybride + graphe reste
+#   correcte sur une question simple, l'inverse n'est pas vrai.
+#
+# Contraintes :
+#   - `relations` ne cite que des relations de core/ontology.py ;
+#   - les noms d'entités sont ceux de data/synthetic_data/referentials ;
+#   - aucune question n'est reprise de gold/questions.yaml : ce jeu reste
+#     l'ensemble de test, sans fuite vers les exemples du routeur.
+# =============================================================================
+
+labels:
+  rag_simple: "Recherche de passages (BM25 + vecteurs), sans parcours du graphe"
+  graphrag: "Recherche hybride + parcours du Knowledge Graph (faits et chemins)"
+
+examples:
+  # ---------------------------------------------------------------- RAG SIMPLE
+  # Existence d'un document sur un sujet
+  - question: "Existe-t-il une procédure qui traite des réclamations clients ?"
+    route: rag_simple
+    intent: existence_document
+  - question: "Y a-t-il un document qui décrit le plan de continuité d'activité ?"
+    route: rag_simple
+    intent: existence_document
+  - question: "Avons-nous une procédure sur la gestion des incidents de production ?"
+    route: rag_simple
+    intent: existence_document
+  - question: "Existe-t-il un guide utilisateur pour l'outil Sentinel KYC ?"
+    route: rag_simple
+    intent: existence_document
+
+  # Textes de référence cités dans une procédure
+  - question: "Quelle circulaire est citée dans la procédure de connaissance client ?"
+    route: rag_simple
+    intent: texte_reference
+    note: "Le texte cité figure dans la section « Références » de la procédure."
+  - question: "Sur quels textes réglementaires s'appuie la procédure PRC-LAB-005 ?"
+    route: rag_simple
+    intent: texte_reference
+  - question: "Quelle note de service désigne les correspondants PCA ?"
+    route: rag_simple
+    intent: texte_reference
+
+  # Contenu factuel d'une procédure (délai, seuil, fréquence, étape)
+  - question: "Quel est le délai de traitement d'une réclamation client ?"
+    route: rag_simple
+    intent: fait_procedure
+  - question: "Quelles sont les étapes de l'octroi d'un crédit aux particuliers ?"
+    route: rag_simple
+    intent: fait_procedure
+  - question: "Quels documents faut-il collecter pour ouvrir un compte à une personne morale ?"
+    route: rag_simple
+    intent: fait_procedure
+  - question: "Comment classer la priorité d'un incident de production ?"
+    route: rag_simple
+    intent: fait_procedure
+  - question: "Que faire en cas de suspicion d'opération de blanchiment ?"
+    route: rag_simple
+    intent: fait_procedure
+  - question: "Quelle est la durée de conservation des dossiers clients ?"
+    route: rag_simple
+    intent: fait_procedure
+
+  # Rôle décrit dans le texte (une tâche n'est pas un nœud du graphe)
+  - question: "Qui valide une demande d'habilitation selon la procédure ?"
+    route: rag_simple
+    intent: role_dans_le_texte
+    note: "La réponse est une fonction décrite dans une étape, pas une relation du graphe."
+  - question: "Qui doit signer la déclaration de soupçon ?"
+    route: rag_simple
+    intent: role_dans_le_texte
+
+  # Définition d'une notion
+  - question: "Qu'est-ce qu'une personne politiquement exposée ?"
+    route: rag_simple
+    intent: definition
+  - question: "Comment est défini le bénéficiaire effectif ?"
+    route: rag_simple
+    intent: definition
+  - question: "Que recouvre la notion de vigilance renforcée ?"
+    route: rag_simple
+    intent: definition
+
+  # Version, date, statut d'un document
+  - question: "Quelle est la version en vigueur de la procédure KYC ?"
+    route: rag_simple
+    intent: version_document
+  - question: "Quelle est la date de mise à jour de la procédure de gestion des habilitations ?"
+    route: rag_simple
+    intent: version_document
+  - question: "Qu'est-ce qui a changé entre la version 1.0 et la version 2.0 de la PRC-KYC-001 ?"
+    route: rag_simple
+    intent: version_document
+
+  # ------------------------------------------------------------------ GRAPHRAG
+  # Entité en charge d'un sujet (gouvernance documentaire)
+  - question: "Quelle entité est propriétaire de la procédure de gestion des réclamations ?"
+    route: graphrag
+    intent: entite_responsable
+    relations: [OWNS]
+  - question: "Quelle direction est en charge de la gouvernance des données ?"
+    route: graphrag
+    intent: entite_responsable
+    relations: [OWNS, BELONGS_TO]
+  - question: "Quelles procédures relèvent de la Direction Conformité ?"
+    route: graphrag
+    intent: entite_responsable
+    relations: [OWNS]
+
+  # Personne responsable
+  - question: "Qui est responsable de la procédure de gestion des habilitations ?"
+    route: graphrag
+    intent: personne_responsable
+    relations: [RESPONSIBLE_FOR]
+  - question: "Qui est le responsable applicatif de CoreNova ?"
+    route: graphrag
+    intent: personne_responsable
+    relations: [RESPONSIBLE_FOR]
+  - question: "De quelles procédures et applications Omar Tazi est-il responsable ?"
+    route: graphrag
+    intent: personne_responsable
+    relations: [RESPONSIBLE_FOR]
+
+  # Organisation et rattachement
+  - question: "Dans quelle direction travaille Nadia Benali ?"
+    route: graphrag
+    intent: organisation
+    relations: [WORKS_IN]
+  - question: "À quelle direction est rattachée la Cellule KYC ?"
+    route: graphrag
+    intent: organisation
+    relations: [PART_OF]
+  - question: "Qui travaille au Pôle Sécurité des SI ?"
+    route: graphrag
+    intent: organisation
+    relations: [WORKS_IN]
+  - question: "Quelles entités composent la Direction des Risques ?"
+    route: graphrag
+    intent: organisation
+    relations: [PART_OF]
+
+  # Expertise
+  - question: "Qui est expert en lutte anti-blanchiment ?"
+    route: graphrag
+    intent: expertise
+    relations: [HAS_EXPERTISE]
+  - question: "Vers qui me tourner pour une question sur l'architecture SI ?"
+    route: graphrag
+    intent: expertise
+    relations: [HAS_EXPERTISE]
+  - question: "Quelles sont les compétences de Leila Chraibi ?"
+    route: graphrag
+    intent: expertise
+    relations: [HAS_EXPERTISE]
+
+  # Projets
+  - question: "Qui pilote le projet Vigilance ?"
+    route: graphrag
+    intent: projet
+    relations: [PARTICIPATES_IN]
+  - question: "Qui est le sponsor du programme Horizon Data ?"
+    route: graphrag
+    intent: projet
+    relations: [PARTICIPATES_IN]
+  - question: "Quel projet a livré la plateforme DataLake Horizon ?"
+    route: graphrag
+    intent: projet
+    relations: [DELIVERS]
+  - question: "Quelles procédures ont été révisées par le projet Habilitations 360 ?"
+    route: graphrag
+    intent: projet
+    relations: [IMPACTS]
+  - question: "Sur quels projets Karim El Fassi a-t-il travaillé ?"
+    route: graphrag
+    intent: projet
+    relations: [PARTICIPATES_IN]
+
+  # Outils et dépendances
+  - question: "Quels outils sont utilisés dans la procédure de traitement des réclamations ?"
+    route: graphrag
+    intent: outil
+    relations: [USES]
+  - question: "Quelles procédures s'appuient sur DocuFlow ?"
+    route: graphrag
+    intent: outil
+    relations: [USES]
+  - question: "De quels systèmes dépend Sentinel KYC ?"
+    route: graphrag
+    intent: outil
+    relations: [DEPENDS_ON]
+
+  # Renvois entre procédures
+  - question: "À quelles autres procédures renvoie la procédure d'octroi de crédit ?"
+    route: graphrag
+    intent: renvoi
+    relations: [REFERENCES]
+  - question: "Quelles procédures renvoient à la procédure de gestion documentaire ?"
+    route: graphrag
+    intent: renvoi
+    relations: [REFERENCES]
+
+  # Liste exhaustive par sujet ou domaine
+  - question: "Quelles sont toutes les procédures qui traitent des personnes politiquement exposées ?"
+    route: graphrag
+    intent: liste_exhaustive
+    relations: [COVERS]
+  - question: "Quels projets et procédures relèvent du domaine de la continuité d'activité ?"
+    route: graphrag
+    intent: liste_exhaustive
+    relations: [BELONGS_TO]
+
+  # Questions à plusieurs sauts
+  - question: "Quelle entité gère la procédure qui s'appuie sur AML Watch ?"
+    route: graphrag
+    intent: multi_sauts
+    relations: [USES, OWNS]
+  - question: "Qui est responsable des outils utilisés par la procédure de gestion des incidents ?"
+    route: graphrag
+    intent: multi_sauts
+    relations: [USES, RESPONSIBLE_FOR]
+  - question: "Dans quelle direction travaille le chef du projet CrediFast ?"
+    route: graphrag
+    intent: multi_sauts
+    relations: [PARTICIPATES_IN, WORKS_IN]
+  - question: "Quels experts KYC travaillent à la Direction Conformité ?"
+    route: graphrag
+    intent: multi_sauts
+    relations: [HAS_EXPERTISE, WORKS_IN]
+  - question: "Quelles procédures ont été modifiées par un projet piloté par Salma Idrissi ?"
+    route: graphrag
+    intent: multi_sauts
+    relations: [PARTICIPATES_IN, IMPACTS]
+
+  # Analyse d'impact
+  - question: "Si CoreNova est indisponible, quelles procédures sont affectées ?"
+    route: graphrag
+    intent: analyse_impact
+    relations: [DEPENDS_ON, USES]
+  - question: "Qui faut-il prévenir si la procédure KYC est modifiée ?"
+    route: graphrag
+    intent: analyse_impact
+    relations: [OWNS, RESPONSIBLE_FOR, REFERENCES]
+  - question: "Quelles procédures seraient impactées par le remplacement d'Orion CRM ?"
+    route: graphrag
+    intent: analyse_impact
+    relations: [USES, DEPENDS_ON]
+
+# -----------------------------------------------------------------------------
+# Cas limites : la formulation trompe, c'est la nature de la réponse qui décide.
+# -----------------------------------------------------------------------------
+contrastive_pairs:
+  - rag_simple: "Existe-t-il une procédure qui traite de la vigilance renforcée ?"
+    graphrag: "Quelles sont toutes les procédures qui traitent de la vigilance renforcée ?"
+    why: "Un seul document suffit pour prouver l'existence ; l'exhaustivité demande la relation COVERS."
+  - rag_simple: "Qui valide la demande d'habilitation ?"
+    graphrag: "Qui est responsable de la procédure de gestion des habilitations ?"
+    why: "Le valideur d'une étape est écrit dans le texte ; le responsable de la procédure est une relation RESPONSIBLE_FOR."
+  - rag_simple: "Quel outil est utilisé pour enregistrer un incident ?"
+    graphrag: "Quelles procédures utilisent ServiceDesk Pro ?"
+    why: "Sens direct, un passage suffit ; sens inverse, il faut agréger plusieurs procédures via USES."
+  - rag_simple: "Quel est le rôle de la Cellule LAB-FT dans le filtrage des opérations ?"
+    graphrag: "De quelle direction dépend la Cellule LAB-FT ?"
+    why: "Description d'une activité dans le texte vs rattachement hiérarchique PART_OF."
+  - rag_simple: "Quelle circulaire est citée dans la procédure KYC ?"
+    graphrag: "Quelle direction est propriétaire de la procédure KYC ?"
+    why: "Texte cité dans le document vs relation OWNS."
+
+# -----------------------------------------------------------------------------
+# Hors du périmètre actuel du graphe
+# -----------------------------------------------------------------------------
+# Ces questions n'ont pas de relation dans l'ontologie : les router vers
+# rag_simple (meilleur effort) tant que l'ontologie n'est pas étendue.
+out_of_ontology:
+  - question: "Quelles procédures appliquent la circulaire X ?"
+    route: rag_simple
+    missing: "Type d'entité Regulation (circulaire, loi, note de service) et relation Procedure -[APPLIES]-> Regulation"
+  - question: "Qui exécute l'étape de contrôle de second niveau dans la procédure crédit ?"
+    route: rag_simple
+    missing: "Les tâches et étapes (Activity) ne sont pas modélisées ; seules les procédures le sont"
