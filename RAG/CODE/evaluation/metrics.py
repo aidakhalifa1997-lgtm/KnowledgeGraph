@@ -41,6 +41,20 @@ def reciprocal_rank(ranking: Sequence[str], relevance: dict[str, int]) -> float:
     return 0.0
 
 
+def average_precision_at_k(ranking: Sequence[str], relevance: dict[str, int], k: int) -> float:
+    """AP@k au sens de trec_eval (map_cut) : somme des précisions aux rangs pertinents ≤ k, divisée
+    par le nombre total de passages pertinents."""
+    relevant = {d for d, r in relevance.items() if r > 0}
+    if not relevant:
+        return 0.0
+    hits, total = 0, 0.0
+    for i, d in enumerate(ranking[:k], start=1):
+        if d in relevant:
+            hits += 1
+            total += hits / i
+    return total / len(relevant)
+
+
 def dcg(gains: Sequence[float]) -> float:
     return sum(g / math.log2(i + 1) for i, g in enumerate(gains, start=1))
 

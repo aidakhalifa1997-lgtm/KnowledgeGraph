@@ -1,0 +1,66 @@
+{
+ "documents": 40,
+ "passages": 13732,
+ "duplicate_passage_keys": 17,
+ "empty_passages": 720,
+ "words_total": 835799,
+ "words_per_passage_median": 40.0,
+ "passages_with_explicit_reference": 1382,
+ "resolved_reference_edges": 1056,
+ "splits": {
+  "train": {
+   "questions": 22295,
+   "passages_per_question": {
+    "1": 16946,
+    "2": 4016,
+    "3": 975,
+    "4": 202,
+    "5": 100,
+    "6": 56
+   },
+   "multi_passage": 5349,
+   "multi_passage_cross_document": 1716,
+   "gold_passages_missing_from_corpus": 0,
+   "gold_pairs": 9993,
+   "gold_pairs_same_document": 6151,
+   "gold_pairs_direct_reference": 20,
+   "gold_pairs_same_parent_section": 739
+  },
+  "dev": {
+   "questions": 2788,
+   "passages_per_question": {
+    "1": 2115,
+    "2": 514,
+    "3": 116,
+    "4": 30,
+    "5": 12,
+    "6": 1
+   },
+   "multi_passage": 673,
+   "multi_passage_cross_document": 233,
+   "gold_passages_missing_from_corpus": 0,
+   "gold_pairs": 1177,
+   "gold_pairs_same_document": 691,
+   "gold_pairs_direct_reference": 5,
+   "gold_pairs_same_parent_section": 71
+  },
+  "test": {
+   "questions": 2786,
+   "passages_per_question": {
+    "1": 2126,
+    "2": 506,
+    "3": 105,
+    "4": 36,
+    "5": 9,
+    "6": 4
+   },
+   "multi_passage": 660,
+   "multi_passage_cross_document": 221,
+   "gold_passages_missing_from_corpus": 0,
+   "gold_pairs": 1187,
+   "gold_pairs_same_document": 675,
+   "gold_pairs_direct_reference": 2,
+   "gold_pairs_same_parent_section": 85
+  }
+ }
+}

@@ -32,6 +32,7 @@ neo4j_data/
 backups/
 *.dump
 RAG/data/uploads/
+RAG/data/external/
 
 # --- Divers ---
 .DS_Store
